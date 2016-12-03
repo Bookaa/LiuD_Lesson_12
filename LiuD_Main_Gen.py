@@ -10,8 +10,14 @@ type_vlst = 3
 type_slst = 4
 type_vq = 5
 type_sq = 6
+type_n = 9
+type_nlst = 10
+type_nq = 11
 
-type_to_prefix = {type_v : 'v', type_s : 's', type_vlst : 'vlst', type_slst : 'slst', type_vq : 'vq', type_sq : 'sq'}
+type_to_prefix = {type_v : 'v', type_vlst : 'vlst', type_vq : 'vq',
+                  type_s : 's', type_slst : 'slst', type_sq : 'sq',
+                  type_n : 'n', type_nlst : 'nlst', type_nq : 'nq',
+                  }
 
 class gen_common:
     def __init__(self, lst, lst_inline):
@@ -21,6 +27,7 @@ class gen_common:
         self.predefines = {'NAME'   : r'[A-Za-z_][A-Za-z0-9_]*',
                            'STRING' : r"'[^'\\]*(?:\\.[^'\\]*)*'",
                            'NUMBER' : r'0|[1-9]\d*',
+                           'FLOAT' : r'(?:0|[1-9]\d*)\.\d+',
         }
     def get_type0(self, name):
         if name in self.itemlst:
@@ -28,6 +35,8 @@ class gen_common:
         if name in self.predefines0:
             return type_none
         if name in self.predefines:
+            if name in ('NAME', 'NUMBER', 'FLOAT'): # not good
+                return type_n
             return type_s
         if name in self.inlinelst:
             value_node = self.inlinelst[name]
@@ -40,18 +49,22 @@ class gen_common:
             return type_vlst
         if t == type_s:
             return type_slst
+        if t == type_n:
+            return type_nlst
         assert False
     def toq(self, t):
         if t == type_v:
             return type_vq
         if t == type_s:
             return type_sq
+        if t == type_n:
+            return type_nq
         assert False
     def get_type(self,node):
         if isinstance(node, GDL.LiuD_litstring):
             return type_none
         if isinstance(node, GDL.LiuD_litname):
-            name = node.s
+            name = node.n
             return self.get_type0(name)
         if isinstance(node, GDL.LiuD_enclosed):
             return self.get_type(node.v)
@@ -60,7 +73,7 @@ class gen_common:
             return self.tolst(t)
         if isinstance(node, GDL.LiuD_itemq):
             if isinstance(node.v, GDL.LiuD_litstring):
-                return self.toq(type_s)
+                return self.toq(type_n)
             t = self.get_type(node.v)
             return self.toq(t)
         if isinstance(node, GDL.LiuD_series):
@@ -75,7 +88,7 @@ class gen_common:
         if isinstance(node, GDL.LiuD_values_or):
             return type_v
         if isinstance(node, GDL.LiuD_string_or):
-            return type_s
+            return type_n
         if isinstance(node, GDL.LiuD_jiad):
             typ = self.get_type0(node.s1)
             typ2 = self.tolst(typ)
@@ -92,7 +105,7 @@ class gen_common:
                 lst.append(t)
             return lst
         if isinstance(v, GDL.LiuD_headseries):
-            t = self.get_type0(v.s)
+            t = self.get_type0(v.n)
             assert t != type_none
             lst.append(t)
             for v1 in v.vlst:
@@ -103,7 +116,7 @@ class gen_common:
             return lst
         if isinstance(v, GDL.LiuD_values_or):
             typ = None
-            for name in v.slst:
+            for name in v.nlst:
                 typ1 = self.get_type0(name)
                 if typ is None:
                     typ = typ1
@@ -113,17 +126,17 @@ class gen_common:
                     assert typ == typ1
             return [typ]
         if isinstance(v, GDL.LiuD_string_or):
-            return [type_s]
+            return [type_n]
         if isinstance(v, GDL.LiuD_jiap):
-            typ = self.get_type0(v.s1)
+            typ = self.get_type0(v.n)
             typ2 = self.tolst(typ)
             return [typ2]
         if isinstance(v, GDL.LiuD_jiad):
-            typ = self.get_type0(v.s1)
+            typ = self.get_type0(v.n)
             typ2 = self.tolst(typ)
             return [typ2]
         if isinstance(v, GDL.LiuD_multiop):
-            return [type_v, type_s, type_v]
+            return [type_v, type_n, type_v]
         if isinstance(v, GDL.LiuD_endswith):
             return [type_v]
 
@@ -162,13 +175,13 @@ class cls_Gen00(gen_common):
         for v in node.vlst:
             v.walkabout(self)
     def visit_basic1(self, node):
-        name = node.s
+        name = node.n
         pattern = ''
-        for s in node.v.slst:
+        for s in node.v.slst_raw:
             pattern += barestring(s)
         self.predefines[name] = pattern
     def visit_option1(self, node):
-        s = node.s
+        s = node.n
         self.prefix = s
     def outp(self, s, ntab=0):
         if not self.lastline:
@@ -193,7 +206,9 @@ class cls_Gen01(cls_Gen00):
     def visit_inline(self, node):
         pass
     def visit_stmt(self, node):
-        name = node.s
+        name = node.n
+        if name == 'classdef':
+            pass
         types = self.get_types(node.v)
         prefix = self.get_prefix(types)
         if not prefix:
@@ -206,7 +221,17 @@ class cls_Gen01(cls_Gen00):
             argstr = ', '.join(prefix)
             self.outtxt += txt % (self.prefix, name, argstr)
             for s in prefix:
-                self.outtxt += '        self.%s = %s\n' % (s, s)
+                if s in ('s', 's1', 's2', 's3', 's4'):
+                    self.outtxt += '        self.%s = %s[1]; self.%s_raw = %s[0]\n' % (s, s, s, s)
+                elif s in ('sq', 'sq1', 'sq2', 'sq3'):
+                    self.outtxt += '        if %s:\n' % s
+                    self.outtxt += '            self.%s = %s[1]; self.%s_raw = %s[0]\n' % (s, s, s, s)
+                    self.outtxt += '        else:\n'
+                    self.outtxt += '            self.%s = None; self.%s_raw = None\n' % (s, s)
+                elif s in ('slst', 'slst1', 'slst2'):
+                    self.outtxt += '        self.%s, self.%s_raw = splitraw(%s)\n' % (s, s, s)
+                else:
+                    self.outtxt += '        self.%s = %s\n' % (s, s)
 
         txt2 = '''    def walkabout(self, visitor):
         return visitor.visit_%s(self)
@@ -214,7 +239,7 @@ class cls_Gen01(cls_Gen00):
         self.outtxt += txt2 + '\n'
         #node.v.walkabout(self)
     def visit_ends(self, node):
-        name = node.s
+        name = node.n
         txt = '''class %s_%s:
     def __init__(self, %s):
 '''
@@ -224,7 +249,17 @@ class cls_Gen01(cls_Gen00):
         argstr = ', '.join(prefix)
         self.outtxt += txt % (self.prefix, name, argstr)
         for s in prefix:
-            self.outtxt += '        self.%s = %s\n' % (s, s)
+            if s in ('s', 's1', 's2', 's3', 's4'):
+                self.outtxt += '        self.%s = %s[1]; self.%s_raw = %s[0]\n' % (s, s, s, s)
+            elif s in ('sq', 'sq1', 'sq2', 'sq3'):
+                self.outtxt += '        if %s:\n' % s
+                self.outtxt += '            self.%s = %s[1]; self.%s_raw = %s[0]\n' % (s, s, s, s)
+                self.outtxt += '        else:\n'
+                self.outtxt += '            self.%s = None; self.%s_raw = None\n' % (s, s)
+            elif s in ('slst', 'slst1', 'slst2'):
+                self.outtxt += '        self.%s, self.%s_raw = splitraw(%s)\n' % (s, s, s)
+            else:
+                self.outtxt += '        self.%s = %s\n' % (s, s)
 
         txt2 = '''    def walkabout(self, visitor):
         return visitor.visit_%s(self)
@@ -237,12 +272,12 @@ def GetItemList(mod):
     prefix = 'XX'
     for v in mod.vlst:
         if isinstance(v, GDL.LiuD_option1):
-            prefix = v.s
+            prefix = v.n
         if isinstance(v, GDL.LiuD_stmt):
-            name = v.s
+            name = v.n
             lst.append(name)
         if isinstance(v, GDL.LiuD_inline):
-            name = v.s
+            name = v.n
             lst2[name] = v.v
     return lst, lst2, prefix
 
@@ -278,6 +313,11 @@ class cls_Gen02(cls_Gen00):
         if s:
             self.last.append(s)
         return s
+    def handle_FLOAT(self):
+        s = Parser00.handle_FLOAT(self)
+        if s:
+            self.last.append(s)
+        return s
     def handle_NAME(self):
         s = Parser00.handle_NAME(self)
         if s:
@@ -286,7 +326,7 @@ class cls_Gen02(cls_Gen00):
     def handle_STRING(self):
         s = Parser00.handle_STRING(self)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
 ''' % prefix
         else:
@@ -309,10 +349,10 @@ class cls_Gen02(cls_Gen00):
             self.outp(s, ntab)
 
     def visit_state1(self, node):
-        s = node.s
+        s = node.n
         self.curskip = s
     def visit_state2(self, node):
-        s = node.s
+        s = node.s_raw
         #self.linecomments = barestring(s)
         #self.outp('self.linecomments = %s' % s)
         self.ntab -= 1
@@ -327,8 +367,8 @@ class cls_Gen02(cls_Gen00):
         elif self.curskip == 'crlf':
             self.outp('self.skipspacecrlf()')
     def visit_stmt(self, node):
-        name = node.s
-        if name == 'star':
+        name = node.n
+        if name == 'dest_tuple':
             pass
         txt = '''
     def handle_%s(self):''' % name
@@ -356,7 +396,7 @@ class cls_Gen02(cls_Gen00):
             self.outp('return %s_%s(%s)' % (self.prefix, name, ', '.join(prefix)))
         self.curtyp = None
     def visit_ends(self, node):
-        name = node.s
+        name = node.n
         if name == 'ext_dot':
             pass
         txt = '''
@@ -378,7 +418,7 @@ class cls_Gen02(cls_Gen00):
         self.curtyp = None
 
     def visit_endswith(self, node):
-        name = node.s
+        name = node.n
         #self.out1('self.deep()')
         self.outp('v0 = self.%s()' % self.hdlhandle(name))
         self.outp('if not v0:')
@@ -391,7 +431,7 @@ class cls_Gen02(cls_Gen00):
         self.ntab += 1
         self.skipspace()
         self.out1('self.deep1()')
-        for i, s in enumerate(node.slst):
+        for i, s in enumerate(node.nlst):
             self.outp('v1 = self.hdlext_%s(v0)' % s)
             self.outp('if v1:')
             self.outp('v0 = v1', 1)
@@ -407,7 +447,7 @@ class cls_Gen02(cls_Gen00):
         self.outp('return v0')
         self.curtyp = None
     def visit_inline(self, node):
-        name = node.s
+        name = node.n
         if name == 'stmt':
             pass
         txt = '''
@@ -461,7 +501,7 @@ class cls_Gen02(cls_Gen00):
             v1.walkabout(self)
     def visit_headseries(self, node):
         vname = self.curtyp[1][0]
-        self.do_litname_s(node.s)
+        self.do_litname_s(node.n)
         self.out1('self.upn(1)')
         self.outp('savpos3 = self.pos')
         self.skipspace()
@@ -508,7 +548,7 @@ class cls_Gen02(cls_Gen00):
             v1 = DirectToV(v)
             v1.walkabout(self)
     def visit_litname(self, node):
-        name = node.s
+        name = node.n
         self.do_litname_s(name)
     def do_litname_s(self, name):
         if name in self.predefines0:
@@ -534,7 +574,7 @@ class cls_Gen02(cls_Gen00):
 
         assert False
     def visit_litstring(self, node):
-        s = node.s
+        s = node.s_raw
         if self.curpos == pos_onlyme:
             self.outp("if not self.handle_str(%s):" % s)
             self.outp('return None', 1)
@@ -551,7 +591,7 @@ class cls_Gen02(cls_Gen00):
     def visit_string_or(self, node):
         vname = self.curtyp[1][self.curtypno]
         self.out1('no_ = 0')
-        for i,s in enumerate(node.slst):
+        for i,s in enumerate(node.slst_raw):
             if i == 0:
                 self.outp('%s = self.handle_str(%s)' % (vname, s))
             else:
@@ -570,7 +610,7 @@ class cls_Gen02(cls_Gen00):
         self.out1('self.deep()')
         self.out1('no_ = 0')
         vname = self.curtyp[1][self.curtypno]
-        for i,s in enumerate(node.slst):
+        for i,s in enumerate(node.nlst):
             if i == 0:
                 self.outp('%s = self.%s()' % (vname, self.hdlhandle(s)))
             else:
@@ -586,7 +626,7 @@ class cls_Gen02(cls_Gen00):
         self.out1('self.upn(2)')
     def visit_jiap(self, node):
         self.out1('self.deep()')
-        s1, s2 = node.s1, node.s2
+        s1, s2 = node.n, node.s_raw
         vname = self.curtyp[1][0]
         self.outp('savpos = self.pos')
         if s1 in self.inlinelst:
@@ -641,7 +681,7 @@ class cls_Gen02(cls_Gen00):
         '''
     def visit_jiad(self, node):
         self.out1('self.deep()')
-        s1, s2 = node.s1, node.s2
+        s1, s2 = node.n, node.s_raw
         vname = self.curtyp[1][0]
         if s1 in self.inlinelst:
             self.outp('s = self.hdl_%s()' % s1)
@@ -675,7 +715,7 @@ class cls_Gen02(cls_Gen00):
             lstname = self.curtyp[1][self.curtypno]
             v1 = DirectToV(node.v)
             if isinstance(v1, GDL.LiuD_litname):
-                name = v1.s
+                name = v1.n
                 if name in self.itemlst:
                     self.out1('self.deep()')
                     self.outp('v = self.handle_%s()' % name)
@@ -757,7 +797,7 @@ class cls_Gen02(cls_Gen00):
             lstname = self.curtyp[1][self.curtypno]
             v1 = DirectToV(node.v)
             if isinstance(v1, GDL.LiuD_litname):
-                name = v1.s
+                name = v1.n
                 if name in self.itemlst:
                     self.outp('%s = []' % lstname)
                     self.outp('savpos2 = self.pos')
@@ -824,7 +864,7 @@ class cls_Gen02(cls_Gen00):
                     self.skipspace()
                 v = DirectToV(v)
                 if isinstance(v, GDL.LiuD_litname):
-                    name = v.s
+                    name = v.n
                     if name in self.itemlst:
                         self.outp('v = self.handle_%s()' % name)
                         self.outp('if not v:')
@@ -884,13 +924,13 @@ class cls_Gen02(cls_Gen00):
         typ = self.curtyp[0][self.curtypno]
         self.curtypno += 1
         if isinstance(v, GDL.LiuD_litname):
-            name = v.s
+            name = v.n
             self.outp('%s = self.%s()' % (vname, self.hdlhandle(name)))
             self.out1('if not %s:' % vname)
             self.out1('self.last.append([])', 1)
             return
         if isinstance(v, GDL.LiuD_litstring):
-            self.outp('%s = self.handle_str(%s)' % (vname, v.s))
+            self.outp('%s = self.handle_str(%s)' % (vname, v.s_raw))
             self.out1('self.last.append(1 if %s else 0)' % vname)
             return
         if isinstance(v, GDL.LiuD_enclosed):
@@ -919,19 +959,19 @@ class cls_Gen02(cls_Gen00):
         self.ntab -= 1
     def visit_multiop(self, node):
         v1, s, v2 = self.curtyp[1]
-        if node.s1 in self.inlinelst:
-            self.outp('%s = self.hdl_%s()' % (v1, node.s1))
+        if node.n1 in self.inlinelst:
+            self.outp('%s = self.hdl_%s()' % (v1, node.n1))
         else:
-            self.outp('%s = self.handle_%s()' % (v1, node.s1))
+            self.outp('%s = self.handle_%s()' % (v1, node.n1))
         self.outp('if not %s:' % v1)
         self.out1('self.upfail()', 1)
         self.outp('return None', 1)
         self.out1('self.upn(1)')
         for i,v5 in enumerate(node.vlst):
             if isinstance(v5, GDL.LiuD_litstring):
-                s5 = v5.s
+                s5 = v5.s_raw
             elif isinstance(v5, GDL.LiuD_enclosedstrs):
-                lst = v5.slst
+                lst = v5.slst_raw
                 s5 = ', '.join(lst)
             else:
                 assert False
@@ -955,10 +995,10 @@ class cls_Gen02(cls_Gen00):
             self.out1('self.last.append(%s)' % s)
             self.skipspace()
             self.out1('self.deep()')
-            if node.s2 in self.inlinelst:
-                self.outp('%s = self.hdl_%s()' % (v2, node.s2))
+            if node.n2 in self.inlinelst:
+                self.outp('%s = self.hdl_%s()' % (v2, node.n2))
             else:
-                self.outp('%s = self.handle_%s()' % (v2, node.s2))
+                self.outp('%s = self.handle_%s()' % (v2, node.n2))
             self.outp('if not %s:' % v2)
             self.out1('self.upfail()', 1)
             self.out1('self.upfail()', 1)
@@ -973,8 +1013,8 @@ class cls_Gen02(cls_Gen00):
         self.outp('return multiop%d(%s)' % (i+1, v1))
     def visit_basic1(self, node):
         cls_Gen00.visit_basic1(self, node)
-        name = node.s
-        lst = ['r%s' % s for s in node.v.slst]
+        name = node.n
+        lst = ['r%s' % s for s in node.v.slst_raw]
         s = ' + '.join(lst)
         self.ntab -=1
         self.outp('def handle_%s(self):' % name)
@@ -982,7 +1022,7 @@ class cls_Gen02(cls_Gen00):
         if self.flg_serial:
             self.outp('s = self.handle_basic(pattn)',1)
             self.outp('if s:',1)
-            self.outp('self.last.append(s)',2)
+            self.outp('self.last.append(s[0])',2)
             self.outp('return s',1)
         else:
             self.outp('return self.handle_basic(pattn)',1)
@@ -1027,8 +1067,8 @@ class %s_output:
         self.outp = outp
 ''' % prefix
     def visit_stmt(self, node):
-        name = node.s
-        if name == 'classdef':
+        name = node.n
+        if name == 'value_n':
             pass
 
         if isinstance(node.v, GDL.LiuD_endswith):
@@ -1047,7 +1087,7 @@ class %s_output:
         #print self.outtxt
         #self.outtxt = ''
     def visit_ends(self, node):
-        name = node.s
+        name = node.n
 
         types = self.get_types(node.v)
         prefix = self.get_prefix(types)
@@ -1061,7 +1101,7 @@ class %s_output:
         node.v.walkabout(self)
         self.ntab -= 1
     def visit_inline(self, node):
-        name = node.s
+        name = node.n
         if name == 'value0':
             pass
 
@@ -1123,7 +1163,7 @@ class %s_output:
         self.ntab -= 1
 
     def visit_litname(self, node):
-        s = node.s
+        s = node.n
         if s in self.itemlst:
             argname = self.curtyp[1][self.curtypno]; self.curtypno += 1
             self.outp("%s.walkabout(self)" % getargname(argname))
@@ -1142,7 +1182,10 @@ class %s_output:
             return
         if s in self.predefines:
             argname = self.curtyp[1][self.curtypno]; self.curtypno += 1
-            self.outp('self.outp.puts(%s)' % getargname(argname))
+            if s == 'STRING' and argname != '-v': # not good
+                self.outp('self.outp.puts(%s_raw)' % getargname(argname))
+            else:
+                self.outp('self.outp.puts(%s)' % getargname(argname))
             return
         if s in self.inlinelst:
             argname = self.curtyp[1][self.curtypno]; self.curtypno += 1
@@ -1152,12 +1195,14 @@ class %s_output:
 
         #self.outp("self.outp.outs('%s')" % node.s)
     def visit_litstring(self, node):
-        self.outp("self.outp.puts(%s)" % node.s)
+        self.outp("self.outp.puts(%s)" % node.s_raw)
     def visit_string_or(self, node):
         argname = self.curtyp[1][self.curtypno]
         typ = self.curtyp[0][self.curtypno]
         self.curtypno += 1
         if typ == type_s:
+            self.outp("self.outp.puts(%s_raw)" % getargname(argname))
+        elif typ == type_n:
             self.outp("self.outp.puts(%s)" % getargname(argname))
         else:
             self.outp("%s.walkabout(self)" % getargname(argname))
@@ -1166,6 +1211,8 @@ class %s_output:
         typ = self.curtyp[0][self.curtypno]
         self.curtypno += 1
         if typ == type_s:
+            self.outp("self.outp.puts(%s_raw)" % getargname(argname))
+        elif typ == type_n:
             self.outp("self.outp.puts(%s)" % getargname(argname))
         else:
             self.outp("%s.walkabout(self)" % getargname(argname))
@@ -1176,13 +1223,19 @@ class %s_output:
         if typ == type_slst:
             self.outp("self.outp.puts(node.%s[0])" % argname)
             self.outp("for s_ in node.%s[1:]:" % argname)
-            self.outp("self.outp.puts(%s)" % node.s2, 1)
+            self.outp("self.outp.puts(%s)" % node.s_raw, 1)
+            self.outp("self.outp.puts(s_)", 1)
+            return
+        if typ == type_nlst:
+            self.outp("self.outp.puts(node.%s[0])" % argname)
+            self.outp("for s_ in node.%s[1:]:" % argname)
+            self.outp("self.outp.puts(%s)" % node.s_raw, 1)
             self.outp("self.outp.puts(s_)", 1)
             return
         if typ == type_vlst:
             self.outp("node.%s[0].walkabout(self)" % argname)
             self.outp("for v in node.%s[1:]:" % argname)
-            self.outp("self.outp.puts(%s)" % node.s2, 1)
+            self.outp("self.outp.puts(%s)" % node.s_raw, 1)
             self.outp("v.walkabout(self)", 1)
             return
         assert False
@@ -1193,13 +1246,19 @@ class %s_output:
         if typ == type_slst:
             self.outp("self.outp.puts(node.%s[0])" % argname)
             self.outp("for s_ in node.%s[1:]:" % argname)
-            self.outp("self.outp.puts(%s)" % node.s2, 1)
+            self.outp("self.outp.puts(%s)" % node.s_raw, 1)
+            self.outp("self.outp.puts(s_)", 1)
+            return
+        if typ == type_nlst:
+            self.outp("self.outp.puts(node.%s[0])" % argname)
+            self.outp("for s_ in node.%s[1:]:" % argname)
+            self.outp("self.outp.puts(%s)" % node.s_raw, 1)
             self.outp("self.outp.puts(s_)", 1)
             return
         if typ == type_vlst:
             self.outp("node.%s[0].walkabout(self)" % argname)
             self.outp("for v in node.%s[1:]:" % argname)
-            self.outp("self.outp.puts(%s)" % node.s2, 1)
+            self.outp("self.outp.puts(%s)" % node.s_raw, 1)
             self.outp("v.walkabout(self)", 1)
             return
         assert False
@@ -1235,8 +1294,8 @@ class cls_Gen04(cls_Gen00):
     def visit_state2(self, node):
         pass
     def visit_stmt(self, node):
-        name = node.s
-        if name == 'star':
+        name = node.n
+        if name == 'value_str':
             pass
         txt = 'def handle_%s(self, lst):' % name
         self.outp(txt)
@@ -1262,13 +1321,20 @@ class cls_Gen04(cls_Gen00):
         node.v.walkabout(self)
 
         if not isinstance(node.v, (GDL.LiuD_multiop, GDL.LiuD_endswith)):
-            self.outp('return %s_%s(%s)' % (self.prefix, name, ', '.join(prefix)))
+            lst = []
+            for pre in prefix:
+                if pre == 's':
+                    lst.append('(%s, %s)' % (pre, pre))
+                else:
+                    lst.append(pre)
+            s = ', '.join(lst)
+            self.outp('return %s_%s(%s)' % (self.prefix, name, s))
         self.curtyp = None
         self.ntab -= 1
         #print self.outtxt
         #self.outtxt = ''
     def visit_inline(self, node):
-        name = node.s
+        name = node.n
         if name == 'deepstmts':
             pass
         txt = 'def hdl_%s(self, lst):' % name
@@ -1326,7 +1392,7 @@ class cls_Gen04(cls_Gen00):
             v1 = DirectToV(v)
             v1.walkabout(self)
     def visit_litname(self, node):
-        name = node.s
+        name = node.n
         if name in self.predefines0:
             return
         vname = self.curtyp[1][self.curtypno]
@@ -1349,7 +1415,7 @@ class cls_Gen04(cls_Gen00):
         if isinstance(v, GDL.LiuD_litname):
             self.outp('%s = None' % vname)
             self.outp('if lst_%s:' % vname)
-            name = v.s
+            name = v.n
             if name in self.itemlst:
                 self.outp('%s = self.handle_%s(lst_%s)' % (vname, name, vname), 1)
                 return
@@ -1360,7 +1426,7 @@ class cls_Gen04(cls_Gen00):
         if isinstance(v, GDL.LiuD_litstring):
             self.outp('%s = ""' % vname)
             self.outp('if lst_%s != 0:' % vname)
-            self.outp('%s = %s' % (vname, v.s), 1)
+            self.outp('%s = %s' % (vname, v.s_raw), 1)
             return
         if isinstance(v, GDL.LiuD_enclosed):
             self.outp('%s = None' % vname)
@@ -1390,7 +1456,7 @@ class cls_Gen04(cls_Gen00):
             for i,v in enumerate(node1.vlst):
                 v = DirectToV(v)
                 if isinstance(v, GDL.LiuD_litname):
-                    name = v.s
+                    name = v.n
                     if name in self.itemlst:
                         self.outp('v = self.handle_%s(%s)' % (name, name2))
                         vname = 'v'
@@ -1413,7 +1479,7 @@ class cls_Gen04(cls_Gen00):
             self.outp('%s.append(%s)' % (lstname, vname))
             return
         if isinstance(node1, GDL.LiuD_litname):
-            name = node1.s
+            name = node1.n
             if name in self.itemlst:
                 self.outp('v = self.handle_%s()' % name)
                 self.outp('if not v:')
@@ -1441,7 +1507,7 @@ class cls_Gen04(cls_Gen00):
         assert False
     def visit_jiad(self, node):
         vname = self.curtyp[1][self.curtypno]
-        s1, s2 = node.s1, node.s2
+        s1, s2 = node.n, node.s
         vname = self.curtyp[1][0]
         self.outp('%s = []' % vname)
         self.outp('for l2 in lst_%s:' % vname)
@@ -1456,7 +1522,7 @@ class cls_Gen04(cls_Gen00):
         self.ntab -= 1
     def visit_jiap(self, node):
         vname = self.curtyp[1][self.curtypno]
-        s1, s2 = node.s1, node.s2
+        s1, s2 = node.n, node.s
         vname = self.curtyp[1][0]
         self.outp('%s = []' % vname)
         self.outp('for l2 in lst_%s:' % vname)
@@ -1473,7 +1539,7 @@ class cls_Gen04(cls_Gen00):
         vname = self.curtyp[1][self.curtypno]
 
         self.outp('no_ = lst_%s' % vname)
-        for i,s in enumerate(node.slst):
+        for i,s in enumerate(node.slst_raw):
             if i == 0:
                 self.outp('if no_ == %d:' % i)
             else:
@@ -1485,7 +1551,7 @@ class cls_Gen04(cls_Gen00):
         vname = self.curtyp[1][self.curtypno]
         self.outp('(l_,no_) = lst_%s' % vname)
 
-        for i,s in enumerate(node.slst):
+        for i,s in enumerate(node.nlst):
             if i == 0:
                 self.outp('if no_ == 0:')
             else:
@@ -1506,16 +1572,16 @@ class cls_Gen04(cls_Gen00):
     def visit_multiop(self, node):
         v1, s, v2 = self.curtyp[1]
         self.outp('if len(lst) == 1:')
-        if node.s1 in self.inlinelst:
-            self.outp('return self.hdl_%s(lst[0])' % node.s1, 1)
+        if node.n1 in self.inlinelst:
+            self.outp('return self.hdl_%s(lst[0])' % node.n1, 1)
         else:
-            self.outp('return self.handle_%s(lst[0])' % node.s1, 1)
+            self.outp('return self.handle_%s(lst[0])' % node.n1, 1)
         self.outp('def func1(lst2):')
         self.outp('    if len(lst2) == 1:')
-        if node.s2 in self.inlinelst:
-            self.outp('return self.hdl_%s(lst2[0])' % node.s2, 2)
+        if node.n2 in self.inlinelst:
+            self.outp('return self.hdl_%s(lst2[0])' % node.n2, 2)
         else:
-            self.outp('return self.handle_%s(lst2[0])' % node.s2, 2)
+            self.outp('return self.handle_%s(lst2[0])' % node.n2, 2)
 
         self.outp('    lst_v1, s, lst_v2 = lst2')
         self.outp('    v1 = func1(lst_v1)')
@@ -1529,8 +1595,8 @@ class cls_Gen04(cls_Gen00):
     def visit_endswith(self, node):
         self.outp('lst_v, no_ = lst')
         self.outp('if no_ == 0:')
-        self.outp('return self.%s(lst_v)' % self.hdlhandle(node.s), 1)
-        for i,s in enumerate(node.slst):
+        self.outp('return self.%s(lst_v)' % self.hdlhandle(node.n), 1)
+        for i,s in enumerate(node.nlst):
             self.outp('elif no_ == %d:' % (i+1))
             self.outp('v0 = self.handle_%s(lst_v[0])' % self.curname, 1)
             self.outp('return self.hdlext_%s(lst_v, v0)' % s, 1)
@@ -1538,7 +1604,7 @@ class cls_Gen04(cls_Gen00):
         self.outp('assert False', 1)
 
     def visit_ends(self, node):
-        name = node.s
+        name = node.n
         if name == 'params':
             pass
         txt = 'def hdlext_%s(self, lst, v0):' % name
@@ -1566,7 +1632,7 @@ class cls_Gen04(cls_Gen00):
         self.ntab -= 1
     def visit_headseries(self, node):
         self.outp('if len(lst) == 1:')
-        self.outp('return self.%s(lst[0])' % self.hdlhandle(node.s), 1)
+        self.outp('return self.%s(lst[0])' % self.hdlhandle(node.n), 1)
         lst1 = ['lst_%s' % a for a in self.curtyp[1]]
         s2 = ', '.join(lst1)
         self.outp('%s = lst' % s2)
@@ -1574,7 +1640,7 @@ class cls_Gen04(cls_Gen00):
         vname = self.curtyp[1][self.curtypno]; self.curtypno += 1
 
         #self.outp('lst_%s = lst_%s[0]' % (self.curtyp[1][0], self.curtyp[1][0]))
-        self.outp('%s = self.%s(lst_%s[0])' % (vname, self.hdlhandle(node.s), vname))
+        self.outp('%s = self.%s(lst_%s[0])' % (vname, self.hdlhandle(node.n), vname))
 
         for v in node.vlst:
             v.walkabout(self)

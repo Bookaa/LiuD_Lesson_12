@@ -11,19 +11,37 @@ class Parser00:
         if m:
             content = m.group()
             self.pos = m.end()
-            return content
+            if False:
+                return content
+            else:
+                groups = m.groups()
+                if groups:
+                    return content, groups[0]
+                return content, content
         return ''
     def handle_NAME(self):
         pattn = '[A-Za-z_][A-Za-z0-9_]*'
-        return self.handle_basic(pattn)
+        n = self.handle_basic(pattn)
+        if n:
+            return n[0]
+        return ''
     def handle_NUMBER(self):
         pattn = r'0|[1-9]\d*'
-        return self.handle_basic(pattn)
+        n = self.handle_basic(pattn)
+        if n:
+            return n[0]
+        return ''
+    def handle_FLOAT(self):
+        pattn = r'(?:0|[1-9]\d*)\.\d+'
+        n = self.handle_basic(pattn)
+        if n:
+            return n[0]
+        return ''
     def handle_STRING(self):
-        pattn = r"'[^'\\]*(?:\\.[^'\\]*)*'"
+        pattn = r"'([^'\\]*(?:\\.[^'\\]*)*)'"
         s = self.handle_basic(pattn)
         if not s:
-            pattn = r'"[^"\\]*(?:\\.[^"\\]*)*"'
+            pattn = r'"([^"\\]*(?:\\.[^"\\]*)*)"'
             s = self.handle_basic(pattn)
         return s
 
@@ -162,13 +180,12 @@ class OutP:
         self.txt = ''
         self.ntab = 0
     def puts(self, s):
-        #print s,
         if self.txt != '' and self.txt[-1] != '\n':
             self.txt += ' '
         self.txt += s
     def newline(self):
-        #print
-        self.txt += '\n'
+        if self.txt and self.txt[-1] != '\n':
+            self.txt += '\n'
     def ident(self):
         self.newline()
         self.txt += '    ' * self.ntab
@@ -224,6 +241,14 @@ class Serial00:
         assert last is last1
         if last and last[0] == 777:
             self.last.append(last[1])
+
+def splitraw(slst):
+    lst1 = []
+    lst2 = []
+    for s1,s2 in slst:
+        lst1.append(s1)
+        lst2.append(s2)
+    return lst2, lst1
 
 class DbgTrace:
     def __init__(self):

@@ -42,7 +42,7 @@
 #         assign = dest '=' (valuecommap | value)
 #             valuecommap = value ^+ ','
 #         dest1 = litname (, ext_array_index ext_call ext_dot)
-#         dest := commap | dest_tuple | dest1
+#         dest := dotscommap | dest_tuple | dest1
 #             dest_tuple = '(' commas ','? ')'
 #         print_stmt = 'print' args? ','?
 #             args = value ^* ','
@@ -61,9 +61,12 @@
 #     commas = NAME ^* ','
 #     commap = NAME ^+ ','
 #     dotscomma = dots ^* ','
+#     dotscommap = dots ^+ ','
 # 
 #     value_bool = 'True' | 'False'
-#     value0 = NUMBER | STR2 | STR3 | STR4 | STR5 | STR6 | STR7 | STRING | NAME
+#     value_str = STR2 | STR3 | STR4 | STR5 | STR6 | STR7 | STRING
+#     value_n = NUMBER | NAME
+#     value0 := value_str | value_n
 #     value1 := list | list_comprehen | dict | tuple | enclosed | funccall | value_bool | value0
 #         list = '[' args? ','? ']'
 #                 dict_item = value ':' value
@@ -101,9 +104,9 @@
 from GDL_common import *
 
 class PY_dict:
-    def __init__(self, vq, sq):
+    def __init__(self, vq, nq):
         self.vq = vq
-        self.sq = sq
+        self.nq = nq
     def walkabout(self, visitor):
         return visitor.visit_dict(self)
 
@@ -189,8 +192,8 @@ class PY_valuecomma:
         return visitor.visit_valuecomma(self)
 
 class PY_funcdef:
-    def __init__(self, s, vq, v):
-        self.s = s
+    def __init__(self, n, vq, v):
+        self.n = n
         self.vq = vq
         self.v = v
     def walkabout(self, visitor):
@@ -203,16 +206,16 @@ class PY_params:
         return visitor.visit_params(self)
 
 class PY_param:
-    def __init__(self, s, vq):
-        self.s = s
+    def __init__(self, n, vq):
+        self.n = n
         self.vq = vq
     def walkabout(self, visitor):
         return visitor.visit_param(self)
 
 class PY_augassign:
-    def __init__(self, v1, s, v2):
+    def __init__(self, v1, n, v2):
         self.v1 = v1
-        self.s = s
+        self.n = n
         self.v2 = v2
     def walkabout(self, visitor):
         return visitor.visit_augassign(self)
@@ -237,16 +240,16 @@ class PY_dest1:
         return visitor.visit_dest1(self)
 
 class PY_dest_tuple:
-    def __init__(self, v, sq):
+    def __init__(self, v, nq):
         self.v = v
-        self.sq = sq
+        self.nq = nq
     def walkabout(self, visitor):
         return visitor.visit_dest_tuple(self)
 
 class PY_print_stmt:
-    def __init__(self, vq, sq):
+    def __init__(self, vq, nq):
         self.vq = vq
-        self.sq = sq
+        self.nq = nq
     def walkabout(self, visitor):
         return visitor.visit_print_stmt(self)
 
@@ -280,15 +283,15 @@ class PY_importcommas:
         return visitor.visit_importcommas(self)
 
 class PY_importitem:
-    def __init__(self, v, sq):
+    def __init__(self, v, nq):
         self.v = v
-        self.sq = sq
+        self.nq = nq
     def walkabout(self, visitor):
         return visitor.visit_importitem(self)
 
 class PY_classdef:
-    def __init__(self, s, vq, v):
-        self.s = s
+    def __init__(self, n, vq, v):
+        self.n = n
         self.vq = vq
         self.v = v
     def walkabout(self, visitor):
@@ -301,26 +304,26 @@ class PY_assert_stmt:
         return visitor.visit_assert_stmt(self)
 
 class PY_oneword_stmt:
-    def __init__(self, s):
-        self.s = s
+    def __init__(self, n):
+        self.n = n
     def walkabout(self, visitor):
         return visitor.visit_oneword_stmt(self)
 
 class PY_dots:
-    def __init__(self, slst):
-        self.slst = slst
+    def __init__(self, nlst):
+        self.nlst = nlst
     def walkabout(self, visitor):
         return visitor.visit_dots(self)
 
 class PY_commas:
-    def __init__(self, slst):
-        self.slst = slst
+    def __init__(self, nlst):
+        self.nlst = nlst
     def walkabout(self, visitor):
         return visitor.visit_commas(self)
 
 class PY_commap:
-    def __init__(self, slst):
-        self.slst = slst
+    def __init__(self, nlst):
+        self.nlst = nlst
     def walkabout(self, visitor):
         return visitor.visit_commap(self)
 
@@ -330,22 +333,34 @@ class PY_dotscomma:
     def walkabout(self, visitor):
         return visitor.visit_dotscomma(self)
 
+class PY_dotscommap:
+    def __init__(self, vlst):
+        self.vlst = vlst
+    def walkabout(self, visitor):
+        return visitor.visit_dotscommap(self)
+
 class PY_value_bool:
-    def __init__(self, s):
-        self.s = s
+    def __init__(self, n):
+        self.n = n
     def walkabout(self, visitor):
         return visitor.visit_value_bool(self)
 
-class PY_value0:
+class PY_value_str:
     def __init__(self, s):
-        self.s = s
+        self.s = s[1]; self.s_raw = s[0]
     def walkabout(self, visitor):
-        return visitor.visit_value0(self)
+        return visitor.visit_value_str(self)
+
+class PY_value_n:
+    def __init__(self, n):
+        self.n = n
+    def walkabout(self, visitor):
+        return visitor.visit_value_n(self)
 
 class PY_list:
-    def __init__(self, vq, sq):
+    def __init__(self, vq, nq):
         self.vq = vq
-        self.sq = sq
+        self.nq = nq
     def walkabout(self, visitor):
         return visitor.visit_list(self)
 
@@ -371,9 +386,9 @@ class PY_tuple1:
         return visitor.visit_tuple1(self)
 
 class PY_tuple2:
-    def __init__(self, v, sq):
+    def __init__(self, v, nq):
         self.v = v
-        self.sq = sq
+        self.nq = nq
     def walkabout(self, visitor):
         return visitor.visit_tuple2(self)
 
@@ -390,8 +405,8 @@ class PY_enclosed:
         return visitor.visit_enclosed(self)
 
 class PY_funccall:
-    def __init__(self, s, vq):
-        self.s = s
+    def __init__(self, n, vq):
+        self.n = n
         self.vq = vq
     def walkabout(self, visitor):
         return visitor.visit_funccall(self)
@@ -403,8 +418,8 @@ class PY_funcargs:
         return visitor.visit_funcargs(self)
 
 class PY_funcarg:
-    def __init__(self, sq, v):
-        self.sq = sq
+    def __init__(self, nq, v):
+        self.nq = nq
         self.v = v
     def walkabout(self, visitor):
         return visitor.visit_funcarg(self)
@@ -430,9 +445,9 @@ class PY_ext_call:
         return visitor.visit_ext_call(self)
 
 class PY_ext_dot:
-    def __init__(self, v0, s):
+    def __init__(self, v0, n):
         self.v0 = v0
-        self.s = s
+        self.n = n
     def walkabout(self, visitor):
         return visitor.visit_ext_dot(self)
 
@@ -452,24 +467,24 @@ class PY_idx2:
         return visitor.visit_idx2(self)
 
 class PY_signed:
-    def __init__(self, s, v):
-        self.s = s
+    def __init__(self, n, v):
+        self.n = n
         self.v = v
     def walkabout(self, visitor):
         return visitor.visit_signed(self)
 
 class PY_value_7:
-    def __init__(self, v1, s, v2):
+    def __init__(self, v1, n, v2):
         self.v1 = v1
-        self.s = s
+        self.n = n
         self.v2 = v2
     def walkabout(self, visitor):
         return visitor.visit_value_7(self)
 
 class PY_binvalue:
-    def __init__(self, v1, s, v2):
+    def __init__(self, v1, n, v2):
         self.v1 = v1
-        self.s = s
+        self.n = n
         self.v2 = v2
     def walkabout(self, visitor):
         return visitor.visit_binvalue(self)
@@ -483,16 +498,16 @@ class PY_value5:
         return visitor.visit_value5(self)
 
 class PY_value6:
-    def __init__(self, v1, s, v2):
+    def __init__(self, v1, n, v2):
         self.v1 = v1
-        self.s = s
+        self.n = n
         self.v2 = v2
     def walkabout(self, visitor):
         return visitor.visit_value6(self)
 
 class PY_litname:
-    def __init__(self, s):
-        self.s = s
+    def __init__(self, n):
+        self.n = n
     def walkabout(self, visitor):
         return visitor.visit_litname(self)
 
@@ -505,6 +520,11 @@ class PY_Parser(Parser00, Serial00):
         if s:
             self.last.append(s)
         return s
+    def handle_FLOAT(self):
+        s = Parser00.handle_FLOAT(self)
+        if s:
+            self.last.append(s)
+        return s
     def handle_NAME(self):
         s = Parser00.handle_NAME(self)
         if s:
@@ -513,7 +533,7 @@ class PY_Parser(Parser00, Serial00):
     def handle_STRING(self):
         s = Parser00.handle_STRING(self)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
     def get_linecomments(self):
             return '#'
@@ -521,37 +541,37 @@ class PY_Parser(Parser00, Serial00):
         pattn = r'"""(?:.|\n)*?"""'
         s = self.handle_basic(pattn)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
     def handle_STR3(self):
         pattn = r"''" + r"'(?:.|\n)*?'" + r"''"
         s = self.handle_basic(pattn)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
     def handle_STR4(self):
         pattn = r'r"""(?:.|\n)*?"""'
         s = self.handle_basic(pattn)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
     def handle_STR5(self):
         pattn = r"r''" + r"'(?:.|\n)*?'" + r"''"
         s = self.handle_basic(pattn)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
     def handle_STR6(self):
         pattn = r"r'[^'\\]*(?:\\.[^'\\]*)*'"
         s = self.handle_basic(pattn)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
     def handle_STR7(self):
         pattn = r'r"[^"\\]*(?:\\.[^"\\]*)*"'
         s = self.handle_basic(pattn)
         if s:
-            self.last.append(s)
+            self.last.append(s[0])
         return s
         
     def handle_dict(self):
@@ -565,14 +585,14 @@ class PY_Parser(Parser00, Serial00):
         if not vq:
             self.last.append([])
         self.skipspacecrlf()
-        sq = self.handle_str(',')
-        self.last.append(1 if sq else 0)
+        nq = self.handle_str(',')
+        self.last.append(1 if nq else 0)
         self.skipspacecrlf()
         if not self.handle_str('}'):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_dict(vq, sq)
+        return PY_dict(vq, nq)
         
     def handle_dict_items(self):
         self.deep()
@@ -939,8 +959,8 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return None
         self.skipspace()
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             self.upfail()
             return self.restorepos(savpos)
         self.skipspace()
@@ -965,7 +985,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(3)
-        return PY_funcdef(s, vq, v)
+        return PY_funcdef(n, vq, v)
         
     def handle_params(self):
         self.deep()
@@ -995,8 +1015,8 @@ class PY_Parser(Parser00, Serial00):
     def handle_param(self):
         self.deep()
         savpos = self.pos
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             self.upfail()
             return None
         self.skipspace()
@@ -1017,7 +1037,7 @@ class PY_Parser(Parser00, Serial00):
         if not vq:
             self.last.append([])
         self.upn(2)
-        return PY_param(s, vq)
+        return PY_param(n, vq)
         
     def handle_augassign(self):
         self.deep()
@@ -1028,17 +1048,17 @@ class PY_Parser(Parser00, Serial00):
             return None
         self.skipspace()
         no_ = 0
-        s = self.handle_str('+=')
-        if not s:
+        n = self.handle_str('+=')
+        if not n:
             no_ += 1
-            s = self.handle_str('-=')
-        if not s:
+            n = self.handle_str('-=')
+        if not n:
             no_ += 1
-            s = self.handle_str('/=')
-        if not s:
+            n = self.handle_str('/=')
+        if not n:
             no_ += 1
-            s = self.handle_str('*=')
-        if not s:
+            n = self.handle_str('*=')
+        if not n:
             self.upfail()
             return self.restorepos(savpos)
         self.last.append(no_)
@@ -1048,7 +1068,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(3)
-        return PY_augassign(v1, s, v2)
+        return PY_augassign(v1, n, v2)
         
     def handle_assign(self):
         self.deep()
@@ -1148,7 +1168,7 @@ class PY_Parser(Parser00, Serial00):
         self.deep()
         self.deep()
         no_ = 0
-        v = self.handle_commap()
+        v = self.handle_dotscommap()
         if not v:
             no_ += 1
             v = self.handle_dest_tuple()
@@ -1176,14 +1196,14 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.skipspace()
-        sq = self.handle_str(',')
-        self.last.append(1 if sq else 0)
+        nq = self.handle_str(',')
+        self.last.append(1 if nq else 0)
         self.skipspace()
         if not self.handle_str(')'):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_dest_tuple(v, sq)
+        return PY_dest_tuple(v, nq)
         
     def handle_print_stmt(self):
         self.deep()
@@ -1196,10 +1216,10 @@ class PY_Parser(Parser00, Serial00):
         if not vq:
             self.last.append([])
         self.skipspace()
-        sq = self.handle_str(',')
-        self.last.append(1 if sq else 0)
+        nq = self.handle_str(',')
+        self.last.append(1 if nq else 0)
         self.upn(2)
-        return PY_print_stmt(vq, sq)
+        return PY_print_stmt(vq, nq)
         
     def handle_args(self):
         self.deep()
@@ -1334,17 +1354,17 @@ class PY_Parser(Parser00, Serial00):
                 self.upfail()
                 return None
             self.skipspace()
-            sq = self.handle_NAME()
-            if not sq:
+            nq = self.handle_NAME()
+            if not nq:
                 self.upfail()
                 return self.restorepos(savpos)
             self.upn(1)
-            return sq
-        sq = enclosed()
-        if not sq:
+            return nq
+        nq = enclosed()
+        if not nq:
             self.last.append([])
         self.upn(2)
-        return PY_importitem(v, sq)
+        return PY_importitem(v, nq)
         
     def handle_classdef(self):
         self.deep()
@@ -1353,8 +1373,8 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return None
         self.skipspace()
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             self.upfail()
             return self.restorepos(savpos)
         self.skipspace()
@@ -1388,7 +1408,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(3)
-        return PY_classdef(s, vq, v)
+        return PY_classdef(n, vq, v)
         
     def handle_assert_stmt(self):
         self.deep()
@@ -1407,19 +1427,19 @@ class PY_Parser(Parser00, Serial00):
     def handle_oneword_stmt(self):
         self.deep()
         no_ = 0
-        s = self.handle_str('pass')
-        if not s:
+        n = self.handle_str('pass')
+        if not n:
             no_ += 1
-            s = self.handle_str('break')
-        if not s:
+            n = self.handle_str('break')
+        if not n:
             no_ += 1
-            s = self.handle_str('continue')
-        if not s:
+            n = self.handle_str('continue')
+        if not n:
             self.upfail()
             return None
         self.last.append(no_)
         self.upone()
-        return PY_oneword_stmt(s)
+        return PY_oneword_stmt(n)
         
     def handle_dots(self):
         self.deep()
@@ -1430,7 +1450,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return None
         savpos = self.pos
-        slst = [s]
+        nlst = [s]
         while True:
             self.skipspace()
             if not self.handle_str('.'):
@@ -1439,12 +1459,12 @@ class PY_Parser(Parser00, Serial00):
             s = self.handle_NAME()
             if not s:
                 break
-            slst.append(s)
+            nlst.append(s)
             savpos = self.pos
         self.up()
         self.restorepos(savpos)
         self.upone()
-        return PY_dots(slst)
+        return PY_dots(nlst)
         
     def handle_commas(self):
         self.deep()
@@ -1455,7 +1475,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return None
         savpos = self.pos
-        slst = [s]
+        nlst = [s]
         while True:
             self.skipspace()
             if not self.handle_str(','):
@@ -1464,12 +1484,12 @@ class PY_Parser(Parser00, Serial00):
             s = self.handle_NAME()
             if not s:
                 break
-            slst.append(s)
+            nlst.append(s)
             savpos = self.pos
         self.up()
         self.restorepos(savpos)
         self.upone()
-        return PY_commas(slst)
+        return PY_commas(nlst)
         
     def handle_commap(self):
         self.deep()
@@ -1480,7 +1500,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             self.upfail()
             return None
-        slst = [s]
+        nlst = [s]
         while True:
             self.skipspace()
             if not self.handle_str(','):
@@ -1489,16 +1509,16 @@ class PY_Parser(Parser00, Serial00):
             s = self.handle_NAME()
             if not s:
                 break
-            slst.append(s)
+            nlst.append(s)
             savpos = self.pos
         self.restorepos(savpos)
-        if len(slst) < 2:
+        if len(nlst) < 2:
             self.upfail()
             self.upfail()
             return None
         self.up()
         self.upone()
-        return PY_commap(slst)
+        return PY_commap(nlst)
         
     def handle_dotscomma(self):
         self.deep()
@@ -1525,28 +1545,54 @@ class PY_Parser(Parser00, Serial00):
         self.upone()
         return PY_dotscomma(vlst)
         
+    def handle_dotscommap(self):
+        self.deep()
+        self.deep()
+        savpos = self.pos
+        s = self.handle_dots()
+        if not s:
+            self.upfail()
+            self.upfail()
+            return None
+        vlst = [s]
+        while True:
+            self.skipspace()
+            if not self.handle_str(','):
+                break
+            self.skipspace()
+            s = self.handle_dots()
+            if not s:
+                break
+            vlst.append(s)
+            savpos = self.pos
+        self.restorepos(savpos)
+        if len(vlst) < 2:
+            self.upfail()
+            self.upfail()
+            return None
+        self.up()
+        self.upone()
+        return PY_dotscommap(vlst)
+        
     def handle_value_bool(self):
         self.deep()
         no_ = 0
-        s = self.handle_str('True')
-        if not s:
+        n = self.handle_str('True')
+        if not n:
             no_ += 1
-            s = self.handle_str('False')
-        if not s:
+            n = self.handle_str('False')
+        if not n:
             self.upfail()
             return None
         self.last.append(no_)
         self.upone()
-        return PY_value_bool(s)
+        return PY_value_bool(n)
         
-    def handle_value0(self):
+    def handle_value_str(self):
         self.deep()
         self.deep()
         no_ = 0
-        s = self.handle_NUMBER()
-        if not s:
-            no_ += 1
-            s = self.handle_STR2()
+        s = self.handle_STR2()
         if not s:
             no_ += 1
             s = self.handle_STR3()
@@ -1566,16 +1612,47 @@ class PY_Parser(Parser00, Serial00):
             no_ += 1
             s = self.handle_STRING()
         if not s:
-            no_ += 1
-            s = self.handle_NAME()
-        if not s:
             self.upfail()
             self.upfail()
             return None
         self.last.append(no_)
         self.upn(2)
         self.upone()
-        return PY_value0(s)
+        return PY_value_str(s)
+        
+    def handle_value_n(self):
+        self.deep()
+        self.deep()
+        no_ = 0
+        n = self.handle_NUMBER()
+        if not n:
+            no_ += 1
+            n = self.handle_NAME()
+        if not n:
+            self.upfail()
+            self.upfail()
+            return None
+        self.last.append(no_)
+        self.upn(2)
+        self.upone()
+        return PY_value_n(n)
+        
+    def hdl_value0(self):
+        self.deep()
+        self.deep()
+        no_ = 0
+        v = self.handle_value_str()
+        if not v:
+            no_ += 1
+            v = self.handle_value_n()
+        if not v:
+            self.upfail()
+            self.upfail()
+            return None
+        self.last.append(no_)
+        self.upn(2)
+        self.upone()
+        return v
         
     def hdl_value1(self):
         self.deep()
@@ -1602,7 +1679,7 @@ class PY_Parser(Parser00, Serial00):
             v = self.handle_value_bool()
         if not v:
             no_ += 1
-            v = self.handle_value0()
+            v = self.hdl_value0()
         if not v:
             self.upfail()
             self.upfail()
@@ -1623,14 +1700,14 @@ class PY_Parser(Parser00, Serial00):
         if not vq:
             self.last.append([])
         self.skipspace()
-        sq = self.handle_str(',')
-        self.last.append(1 if sq else 0)
+        nq = self.handle_str(',')
+        self.last.append(1 if nq else 0)
         self.skipspace()
         if not self.handle_str(']'):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_list(vq, sq)
+        return PY_list(vq, nq)
         
     def handle_dict_item(self):
         self.deep()
@@ -1738,14 +1815,14 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.skipspace()
-        sq = self.handle_str(',')
-        self.last.append(1 if sq else 0)
+        nq = self.handle_str(',')
+        self.last.append(1 if nq else 0)
         self.skipspace()
         if not self.handle_str(')'):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_tuple2(v, sq)
+        return PY_tuple2(v, nq)
         
     def handle_tupleitem(self):
         self.deep()
@@ -1797,8 +1874,8 @@ class PY_Parser(Parser00, Serial00):
     def handle_funccall(self):
         self.deep()
         savpos = self.pos
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             self.upfail()
             return None
         self.skipspace()
@@ -1814,7 +1891,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_funccall(s, vq)
+        return PY_funccall(n, vq)
         
     def handle_funcargs(self):
         self.deep()
@@ -1847,8 +1924,8 @@ class PY_Parser(Parser00, Serial00):
         def enclosed():
             self.deep()
             savpos = self.pos
-            sq = self.handle_NAME()
-            if not sq:
+            nq = self.handle_NAME()
+            if not nq:
                 self.upfail()
                 return None
             self.skipspace()
@@ -1856,9 +1933,9 @@ class PY_Parser(Parser00, Serial00):
                 self.upfail()
                 return self.restorepos(savpos)
             self.upn(1)
-            return sq
-        sq = enclosed()
-        if not sq:
+            return nq
+        nq = enclosed()
+        if not nq:
             self.last.append([])
         self.skipspace()
         v = self.hdl_value()
@@ -1866,7 +1943,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_funcarg(sq, v)
+        return PY_funcarg(nq, v)
         
     def handle_value3(self):
         self.deep()
@@ -1948,12 +2025,12 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return None
         self.skipspace()
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_ext_dot(v0, s)
+        return PY_ext_dot(v0, n)
         
     def hdl_idx(self):
         self.deep()
@@ -2038,14 +2115,14 @@ class PY_Parser(Parser00, Serial00):
         self.deep()
         savpos = self.pos
         no_ = 0
-        s = self.handle_str('-')
-        if not s:
+        n = self.handle_str('-')
+        if not n:
             no_ += 1
-            s = self.handle_str('+')
-        if not s:
+            n = self.handle_str('+')
+        if not n:
             no_ += 1
-            s = self.handle_str('not')
-        if not s:
+            n = self.handle_str('not')
+        if not n:
             self.upfail()
             return None
         self.last.append(no_)
@@ -2055,7 +2132,7 @@ class PY_Parser(Parser00, Serial00):
             self.upfail()
             return self.restorepos(savpos)
         self.upn(2)
-        return PY_signed(s, v)
+        return PY_signed(n, v)
         
     def handle_value_7(self):
         self.deep()
@@ -2069,14 +2146,14 @@ class PY_Parser(Parser00, Serial00):
                 self.deep1()
                 savpos = self.pos
                 self.skipspace()
-                for s in ['*', '/']:
-                    if self.handle_str(s):
+                for n in ['*', '/']:
+                    if self.handle_str(n):
                         break
                 else:
                     self.upfail()
                     self.restorepos(savpos)
                     return v1
-                self.last.append(s)
+                self.last.append(n)
                 self.skipspace()
                 self.deep()
                 v2 = self.handle_value3()
@@ -2087,21 +2164,21 @@ class PY_Parser(Parser00, Serial00):
                     return v1
                 self.upn(1)
                 self.upn(3)
-                v1 = PY_value_7(v1, s, v2)
+                v1 = PY_value_7(v1, n, v2)
         def multiop2(v1):
             v1 = multiop1(v1)
             while True:
                 self.deep1()
                 savpos = self.pos
                 self.skipspace()
-                for s in ['+', '-']:
-                    if self.handle_str(s):
+                for n in ['+', '-']:
+                    if self.handle_str(n):
                         break
                 else:
                     self.upfail()
                     self.restorepos(savpos)
                     return v1
-                self.last.append(s)
+                self.last.append(n)
                 self.skipspace()
                 self.deep()
                 v2 = self.handle_value3()
@@ -2113,7 +2190,7 @@ class PY_Parser(Parser00, Serial00):
                 self.upn(1)
                 v2 = multiop1(v2)
                 self.upn(3)
-                v1 = PY_value_7(v1, s, v2)
+                v1 = PY_value_7(v1, n, v2)
         return multiop2(v1)
         
     def handle_binvalue(self):
@@ -2128,14 +2205,14 @@ class PY_Parser(Parser00, Serial00):
                 self.deep1()
                 savpos = self.pos
                 self.skipspace()
-                for s in ['%']:
-                    if self.handle_str(s):
+                for n in ['%']:
+                    if self.handle_str(n):
                         break
                 else:
                     self.upfail()
                     self.restorepos(savpos)
                     return v1
-                self.last.append(s)
+                self.last.append(n)
                 self.skipspace()
                 self.deep()
                 v2 = self.handle_value_7()
@@ -2146,21 +2223,21 @@ class PY_Parser(Parser00, Serial00):
                     return v1
                 self.upn(1)
                 self.upn(3)
-                v1 = PY_binvalue(v1, s, v2)
+                v1 = PY_binvalue(v1, n, v2)
         def multiop2(v1):
             v1 = multiop1(v1)
             while True:
                 self.deep1()
                 savpos = self.pos
                 self.skipspace()
-                for s in ['>=', '>', '<=', '<', '==', '!=']:
-                    if self.handle_str(s):
+                for n in ['>=', '>', '<=', '<', '==', '!=']:
+                    if self.handle_str(n):
                         break
                 else:
                     self.upfail()
                     self.restorepos(savpos)
                     return v1
-                self.last.append(s)
+                self.last.append(n)
                 self.skipspace()
                 self.deep()
                 v2 = self.handle_value_7()
@@ -2172,21 +2249,21 @@ class PY_Parser(Parser00, Serial00):
                 self.upn(1)
                 v2 = multiop1(v2)
                 self.upn(3)
-                v1 = PY_binvalue(v1, s, v2)
+                v1 = PY_binvalue(v1, n, v2)
         def multiop3(v1):
             v1 = multiop2(v1)
             while True:
                 self.deep1()
                 savpos = self.pos
                 self.skipspace()
-                for s in ['in', 'is']:
-                    if self.handle_str(s):
+                for n in ['in', 'is']:
+                    if self.handle_str(n):
                         break
                 else:
                     self.upfail()
                     self.restorepos(savpos)
                     return v1
-                self.last.append(s)
+                self.last.append(n)
                 self.skipspace()
                 self.deep()
                 v2 = self.handle_value_7()
@@ -2198,7 +2275,7 @@ class PY_Parser(Parser00, Serial00):
                 self.upn(1)
                 v2 = multiop2(v2)
                 self.upn(3)
-                v1 = PY_binvalue(v1, s, v2)
+                v1 = PY_binvalue(v1, n, v2)
         return multiop3(v1)
         
     def handle_value5(self):
@@ -2250,14 +2327,14 @@ class PY_Parser(Parser00, Serial00):
                 self.deep1()
                 savpos = self.pos
                 self.skipspace()
-                for s in ['and', 'or']:
-                    if self.handle_str(s):
+                for n in ['and', 'or']:
+                    if self.handle_str(n):
                         break
                 else:
                     self.upfail()
                     self.restorepos(savpos)
                     return v1
-                self.last.append(s)
+                self.last.append(n)
                 self.skipspace()
                 self.deep()
                 v2 = self.handle_value5()
@@ -2268,7 +2345,7 @@ class PY_Parser(Parser00, Serial00):
                     return v1
                 self.upn(1)
                 self.upn(3)
-                v1 = PY_value6(v1, s, v2)
+                v1 = PY_value6(v1, n, v2)
         return multiop1(v1)
         
     def hdl_value(self):
@@ -2282,12 +2359,12 @@ class PY_Parser(Parser00, Serial00):
         
     def handle_litname(self):
         self.deep()
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             self.upfail()
             return None
         self.upone()
-        return PY_litname(s)
+        return PY_litname(n)
 
 class PY_output:
     def __init__(self, outp):
@@ -2296,7 +2373,7 @@ class PY_output:
         self.outp.puts('{')
         if node.vq:
             node.vq.walkabout(self)
-        if node.sq:
+        if node.nq:
             self.outp.puts(',')
         self.outp.puts('}')
     def visit_dict_items(self, node):
@@ -2370,7 +2447,7 @@ class PY_output:
             v.walkabout(self)
     def visit_funcdef(self, node):
         self.outp.puts('def')
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts('(')
         if node.vq:
             node.vq.walkabout(self)
@@ -2383,13 +2460,13 @@ class PY_output:
             self.outp.puts(',')
             v.walkabout(self)
     def visit_param(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         if node.vq:
             self.outp.puts('=')
             node.vq.walkabout(self)
     def visit_augassign(self, node):
         node.v1.walkabout(self)
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         node.v2.walkabout(self)
     def visit_assign(self, node):
         node.v1.walkabout(self)
@@ -2405,14 +2482,14 @@ class PY_output:
     def visit_dest_tuple(self, node):
         self.outp.puts('(')
         node.v.walkabout(self)
-        if node.sq:
+        if node.nq:
             self.outp.puts(',')
         self.outp.puts(')')
     def visit_print_stmt(self, node):
         self.outp.puts('print')
         if node.vq:
             node.vq.walkabout(self)
-        if node.sq:
+        if node.nq:
             self.outp.puts(',')
     def visit_args(self, node):
         node.vlst[0].walkabout(self)
@@ -2438,12 +2515,12 @@ class PY_output:
             v.walkabout(self)
     def visit_importitem(self, node):
         node.v.walkabout(self)
-        if node.sq:
+        if node.nq:
             self.outp.puts('as')
-            self.outp.puts(node.sq)
+            self.outp.puts(node.nq)
     def visit_classdef(self, node):
         self.outp.puts('class')
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         if node.vq:
             self.outp.puts('(')
             node.vq.walkabout(self)
@@ -2454,20 +2531,20 @@ class PY_output:
         self.outp.puts('assert')
         node.v.walkabout(self)
     def visit_oneword_stmt(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
     def visit_dots(self, node):
-        self.outp.puts(node.slst[0])
-        for s_ in node.slst[1:]:
+        self.outp.puts(node.nlst[0])
+        for s_ in node.nlst[1:]:
             self.outp.puts('.')
             self.outp.puts(s_)
     def visit_commas(self, node):
-        self.outp.puts(node.slst[0])
-        for s_ in node.slst[1:]:
+        self.outp.puts(node.nlst[0])
+        for s_ in node.nlst[1:]:
             self.outp.puts(',')
             self.outp.puts(s_)
     def visit_commap(self, node):
-        self.outp.puts(node.slst[0])
-        for s_ in node.slst[1:]:
+        self.outp.puts(node.nlst[0])
+        for s_ in node.nlst[1:]:
             self.outp.puts(',')
             self.outp.puts(s_)
     def visit_dotscomma(self, node):
@@ -2475,17 +2552,26 @@ class PY_output:
         for v in node.vlst[1:]:
             self.outp.puts(',')
             v.walkabout(self)
+    def visit_dotscommap(self, node):
+        node.vlst[0].walkabout(self)
+        for v in node.vlst[1:]:
+            self.outp.puts(',')
+            v.walkabout(self)
     def visit_value_bool(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
+    def visit_value_str(self, node):
+        self.outp.puts(node.s_raw)
+    def visit_value_n(self, node):
+        self.outp.puts(node.n)
     def visit_value0(self, node):
-        self.outp.puts(node.s)
+        node.v.walkabout(self)
     def visit_value1(self, node):
         node.v.walkabout(self)
     def visit_list(self, node):
         self.outp.puts('[')
         if node.vq:
             node.vq.walkabout(self)
-        if node.sq:
+        if node.nq:
             self.outp.puts(',')
         self.outp.puts(']')
     def visit_dict_item(self, node):
@@ -2510,7 +2596,7 @@ class PY_output:
     def visit_tuple2(self, node):
         self.outp.puts('(')
         node.v.walkabout(self)
-        if node.sq:
+        if node.nq:
             self.outp.puts(',')
         self.outp.puts(')')
     def visit_tupleitem(self, node):
@@ -2523,7 +2609,7 @@ class PY_output:
         node.v.walkabout(self)
         self.outp.puts(')')
     def visit_funccall(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts('(')
         if node.vq:
             node.vq.walkabout(self)
@@ -2534,8 +2620,8 @@ class PY_output:
             self.outp.puts(',')
             v.walkabout(self)
     def visit_funcarg(self, node):
-        if node.sq:
-            self.outp.puts(node.sq)
+        if node.nq:
+            self.outp.puts(node.nq)
             self.outp.puts('=')
         node.v.walkabout(self)
     def visit_ext_array_index(self, node):
@@ -2552,7 +2638,7 @@ class PY_output:
     def visit_ext_dot(self, node):
         node.v0.walkabout(self)
         self.outp.puts('.')
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
     def visit_idx(self, node):
         node.v.walkabout(self)
     def visit_idx1(self, node):
@@ -2573,15 +2659,15 @@ class PY_output:
     def visit_value2(self, node):
         node.v.walkabout(self)
     def visit_signed(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         node.v.walkabout(self)
     def visit_value_7(self, node):
         node.v1.walkabout(self)
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         node.v2.walkabout(self)
     def visit_binvalue(self, node):
         node.v1.walkabout(self)
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         node.v2.walkabout(self)
     def visit_value5(self, node):
         node.v1.walkabout(self)
@@ -2591,23 +2677,23 @@ class PY_output:
         node.v3.walkabout(self)
     def visit_value6(self, node):
         node.v1.walkabout(self)
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         node.v2.walkabout(self)
     def visit_value(self, node):
         node.v.walkabout(self)
     def visit_litname(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
 
 class PY_SerialIn:
     def handle_dict(self, lst):
-        lst_vq, lst_sq = lst
+        lst_vq, lst_nq = lst
         vq = None
         if lst_vq:
             vq = self.handle_dict_items(lst_vq)
-        sq = ""
-        if lst_sq != 0:
-            sq = ','
-        return PY_dict(vq, sq)
+        nq = ""
+        if lst_nq != 0:
+            nq = ','
+        return PY_dict(vq, nq)
     def handle_dict_items(self, lst):
         lst_vlst = lst
         vlst = []
@@ -2734,13 +2820,13 @@ class PY_SerialIn:
             vlst.append(s)
         return PY_valuecomma(vlst)
     def handle_funcdef(self, lst):
-        lst_s, lst_vq, lst_v = lst
-        s = lst_s
+        lst_n, lst_vq, lst_v = lst
+        n = lst_n
         vq = None
         if lst_vq:
             vq = self.handle_params(lst_vq)
         v = self.handle_deepstmts(lst_v)
-        return PY_funcdef(s, vq, v)
+        return PY_funcdef(n, vq, v)
     def handle_params(self, lst):
         lst_vlst = lst
         vlst = []
@@ -2749,29 +2835,29 @@ class PY_SerialIn:
             vlst.append(s)
         return PY_params(vlst)
     def handle_param(self, lst):
-        lst_s, lst_vq = lst
-        s = lst_s
+        lst_n, lst_vq = lst
+        n = lst_n
         vq = None
         if lst_vq:
             lst_vq = lst_vq[0]
             vq = self.hdl_value(lst_vq)
-        return PY_param(s, vq)
+        return PY_param(n, vq)
     def handle_augassign(self, lst):
-        lst_v1, lst_s, lst_v2 = lst
+        lst_v1, lst_n, lst_v2 = lst
         v1 = self.hdl_dest(lst_v1)
-        no_ = lst_s
+        no_ = lst_n
         if no_ == 0:
-            s = '+='
+            n = '+='
         elif no_ == 1:
-            s = '-='
+            n = '-='
         elif no_ == 2:
-            s = '/='
+            n = '/='
         elif no_ == 3:
-            s = '*='
+            n = '*='
         else:
             assert False
         v2 = self.hdl_value(lst_v2)
-        return PY_augassign(v1, s, v2)
+        return PY_augassign(v1, n, v2)
     def handle_assign(self, lst):
         lst_v1, lst_v2 = lst
         v1 = self.hdl_dest(lst_v1)
@@ -2809,7 +2895,7 @@ class PY_SerialIn:
         lst_v = lst
         (l_,no_) = lst_v
         if no_ == 0:
-            v = self.handle_commap(l_)
+            v = self.handle_dotscommap(l_)
         elif no_ == 1:
             v = self.handle_dest_tuple(l_)
         elif no_ == 2:
@@ -2818,21 +2904,21 @@ class PY_SerialIn:
             assert False
         return v
     def handle_dest_tuple(self, lst):
-        lst_v, lst_sq = lst
+        lst_v, lst_nq = lst
         v = self.handle_commas(lst_v)
-        sq = ""
-        if lst_sq != 0:
-            sq = ','
-        return PY_dest_tuple(v, sq)
+        nq = ""
+        if lst_nq != 0:
+            nq = ','
+        return PY_dest_tuple(v, nq)
     def handle_print_stmt(self, lst):
-        lst_vq, lst_sq = lst
+        lst_vq, lst_nq = lst
         vq = None
         if lst_vq:
             vq = self.handle_args(lst_vq)
-        sq = ""
-        if lst_sq != 0:
-            sq = ','
-        return PY_print_stmt(vq, sq)
+        nq = ""
+        if lst_nq != 0:
+            nq = ','
+        return PY_print_stmt(vq, nq)
     def handle_args(self, lst):
         lst_vlst = lst
         vlst = []
@@ -2875,59 +2961,59 @@ class PY_SerialIn:
             vlst.append(s)
         return PY_importcommas(vlst)
     def handle_importitem(self, lst):
-        lst_v, lst_sq = lst
+        lst_v, lst_nq = lst
         v = self.handle_dots(lst_v)
-        sq = None
-        if lst_sq:
-            lst_sq = lst_sq[0]
-            sq = lst_sq
-        return PY_importitem(v, sq)
+        nq = None
+        if lst_nq:
+            lst_nq = lst_nq[0]
+            nq = lst_nq
+        return PY_importitem(v, nq)
     def handle_classdef(self, lst):
-        lst_s, lst_vq, lst_v = lst
-        s = lst_s
+        lst_n, lst_vq, lst_v = lst
+        n = lst_n
         vq = None
         if lst_vq:
             lst_vq = lst_vq[0]
             vq = self.handle_dotscomma(lst_vq)
         v = self.handle_deepstmts(lst_v)
-        return PY_classdef(s, vq, v)
+        return PY_classdef(n, vq, v)
     def handle_assert_stmt(self, lst):
         lst_v = lst
         v = self.hdl_value(lst_v)
         return PY_assert_stmt(v)
     def handle_oneword_stmt(self, lst):
-        lst_s = lst
-        no_ = lst_s
+        lst_n = lst
+        no_ = lst_n
         if no_ == 0:
-            s = 'pass'
+            n = 'pass'
         elif no_ == 1:
-            s = 'break'
+            n = 'break'
         elif no_ == 2:
-            s = 'continue'
+            n = 'continue'
         else:
             assert False
-        return PY_oneword_stmt(s)
+        return PY_oneword_stmt(n)
     def handle_dots(self, lst):
-        lst_slst = lst
-        slst = []
-        for l2 in lst_slst:
+        lst_nlst = lst
+        nlst = []
+        for l2 in lst_nlst:
             s = l2
-            slst.append(s)
-        return PY_dots(slst)
+            nlst.append(s)
+        return PY_dots(nlst)
     def handle_commas(self, lst):
-        lst_slst = lst
-        slst = []
-        for l2 in lst_slst:
+        lst_nlst = lst
+        nlst = []
+        for l2 in lst_nlst:
             s = l2
-            slst.append(s)
-        return PY_commas(slst)
+            nlst.append(s)
+        return PY_commas(nlst)
     def handle_commap(self, lst):
-        lst_slst = lst
-        slst = []
-        for l2 in lst_slst:
+        lst_nlst = lst
+        nlst = []
+        for l2 in lst_nlst:
             s = l2
-            slst.append(s)
-        return PY_commap(slst)
+            nlst.append(s)
+        return PY_commap(nlst)
     def handle_dotscomma(self, lst):
         lst_vlst = lst
         vlst = []
@@ -2935,17 +3021,24 @@ class PY_SerialIn:
             s = self.handle_dots(l2)
             vlst.append(s)
         return PY_dotscomma(vlst)
+    def handle_dotscommap(self, lst):
+        lst_vlst = lst
+        vlst = []
+        for l2 in lst_vlst:
+            s = self.handle_dots(l2)
+            vlst.append(s)
+        return PY_dotscommap(vlst)
     def handle_value_bool(self, lst):
-        lst_s = lst
-        no_ = lst_s
+        lst_n = lst
+        no_ = lst_n
         if no_ == 0:
-            s = 'True'
+            n = 'True'
         elif no_ == 1:
-            s = 'False'
+            n = 'False'
         else:
             assert False
-        return PY_value_bool(s)
-    def handle_value0(self, lst):
+        return PY_value_bool(n)
+    def handle_value_str(self, lst):
         lst_s = lst
         (l_,no_) = lst_s
         if no_ == 0:
@@ -2962,13 +3055,29 @@ class PY_SerialIn:
             s = l_
         elif no_ == 6:
             s = l_
-        elif no_ == 7:
-            s = l_
-        elif no_ == 8:
-            s = l_
         else:
             assert False
-        return PY_value0(s)
+        return PY_value_str((s, s))
+    def handle_value_n(self, lst):
+        lst_n = lst
+        (l_,no_) = lst_n
+        if no_ == 0:
+            n = l_
+        elif no_ == 1:
+            n = l_
+        else:
+            assert False
+        return PY_value_n(n)
+    def hdl_value0(self, lst):
+        lst_v = lst
+        (l_,no_) = lst_v
+        if no_ == 0:
+            v = self.handle_value_str(l_)
+        elif no_ == 1:
+            v = self.handle_value_n(l_)
+        else:
+            assert False
+        return v
     def hdl_value1(self, lst):
         lst_v = lst
         (l_,no_) = lst_v
@@ -2987,19 +3096,19 @@ class PY_SerialIn:
         elif no_ == 6:
             v = self.handle_value_bool(l_)
         elif no_ == 7:
-            v = self.handle_value0(l_)
+            v = self.hdl_value0(l_)
         else:
             assert False
         return v
     def handle_list(self, lst):
-        lst_vq, lst_sq = lst
+        lst_vq, lst_nq = lst
         vq = None
         if lst_vq:
             vq = self.handle_args(lst_vq)
-        sq = ""
-        if lst_sq != 0:
-            sq = ','
-        return PY_list(vq, sq)
+        nq = ""
+        if lst_nq != 0:
+            nq = ','
+        return PY_list(vq, nq)
     def handle_dict_item(self, lst):
         lst_v1, lst_v2 = lst
         v1 = self.hdl_value(lst_v1)
@@ -3026,12 +3135,12 @@ class PY_SerialIn:
         v = self.hdl_value(lst_v)
         return PY_tuple1(v)
     def handle_tuple2(self, lst):
-        lst_v, lst_sq = lst
+        lst_v, lst_nq = lst
         v = self.handle_tupleitem(lst_v)
-        sq = ""
-        if lst_sq != 0:
-            sq = ','
-        return PY_tuple2(v, sq)
+        nq = ""
+        if lst_nq != 0:
+            nq = ','
+        return PY_tuple2(v, nq)
     def handle_tupleitem(self, lst):
         lst_vlst = lst
         vlst = []
@@ -3044,12 +3153,12 @@ class PY_SerialIn:
         v = self.hdl_value(lst_v)
         return PY_enclosed(v)
     def handle_funccall(self, lst):
-        lst_s, lst_vq = lst
-        s = lst_s
+        lst_n, lst_vq = lst
+        n = lst_n
         vq = None
         if lst_vq:
             vq = self.handle_funcargs(lst_vq)
-        return PY_funccall(s, vq)
+        return PY_funccall(n, vq)
     def handle_funcargs(self, lst):
         lst_vlst = lst
         vlst = []
@@ -3058,13 +3167,13 @@ class PY_SerialIn:
             vlst.append(s)
         return PY_funcargs(vlst)
     def handle_funcarg(self, lst):
-        lst_sq, lst_v = lst
-        sq = None
-        if lst_sq:
-            lst_sq = lst_sq[0]
-            sq = lst_sq
+        lst_nq, lst_v = lst
+        nq = None
+        if lst_nq:
+            lst_nq = lst_nq[0]
+            nq = lst_nq
         v = self.hdl_value(lst_v)
-        return PY_funcarg(sq, v)
+        return PY_funcarg(nq, v)
     def handle_value3(self, lst):
         lst_v, no_ = lst
         if no_ == 0:
@@ -3091,9 +3200,9 @@ class PY_SerialIn:
             vq = self.handle_funcargs(lst_vq)
         return PY_ext_call(v0, vq)
     def hdlext_ext_dot(self, lst, v0):
-        lst_v0, lst_s = lst
-        s = lst_s
-        return PY_ext_dot(v0, s)
+        lst_v0, lst_n = lst
+        n = lst_n
+        return PY_ext_dot(v0, n)
     def hdl_idx(self, lst):
         lst_v = lst
         (l_,no_) = lst_v
@@ -3138,18 +3247,18 @@ class PY_SerialIn:
             assert False
         return v
     def handle_signed(self, lst):
-        lst_s, lst_v = lst
-        no_ = lst_s
+        lst_n, lst_v = lst
+        no_ = lst_n
         if no_ == 0:
-            s = '-'
+            n = '-'
         elif no_ == 1:
-            s = '+'
+            n = '+'
         elif no_ == 2:
-            s = 'not'
+            n = 'not'
         else:
             assert False
         v = self.handle_value3(lst_v)
-        return PY_signed(s, v)
+        return PY_signed(n, v)
     def handle_value_7(self, lst):
         if len(lst) == 1:
             return self.hdl_value2(lst[0])
@@ -3205,6 +3314,6 @@ class PY_SerialIn:
         v = self.handle_value6(lst_v)
         return v
     def handle_litname(self, lst):
-        lst_s = lst
-        s = lst_s
-        return PY_litname(s)
+        lst_n = lst
+        n = lst_n
+        return PY_litname(n)

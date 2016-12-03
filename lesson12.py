@@ -79,7 +79,7 @@ syntax_Py = r'''option.prefix = PY
         assign = dest '=' (valuecommap | value)
             valuecommap = value ^+ ','
         dest1 = litname (, ext_array_index ext_call ext_dot)
-        dest := commap | dest_tuple | dest1
+        dest := dotscommap | dest_tuple | dest1
             dest_tuple = '(' commas ','? ')'
         print_stmt = 'print' args? ','?
             args = value ^* ','
@@ -98,9 +98,12 @@ syntax_Py = r'''option.prefix = PY
     commas = NAME ^* ','
     commap = NAME ^+ ','
     dotscomma = dots ^* ','
+    dotscommap = dots ^+ ','
 
     value_bool = 'True' | 'False'
-    value0 = NUMBER | STR2 | STR3 | STR4 | STR5 | STR6 | STR7 | STRING | NAME
+    value_str = STR2 | STR3 | STR4 | STR5 | STR6 | STR7 | STRING
+    value_n = NUMBER | NAME
+    value0 := value_str | value_n
     value1 := list | list_comprehen | dict | tuple | enclosed | funccall | value_bool | value0
         list = '[' args? ','? ']'
                 dict_item = value ':' value
@@ -179,11 +182,9 @@ import unittest
 class Test(unittest.TestCase):
     def test1(self):
         s = Gen_All(LiuD_syntax)
-
-        #open('Ast_LiuD2.py', 'w').write(s)
+        open('Ast_LiuD2.py', 'w').write(s)
         s2 = open('Ast_LiuD.py').read()
         self.assertEqual(s, s2)
-
     def test3(self):
         import Ast_LiuD
         the = Ast_LiuD.LiuD_Parser(LiuD_syntax)
@@ -235,12 +236,13 @@ itemq = value1 '?'
         import Ast_Py
         the = Ast_Py.PY_Parser(sample_Python)
         mod = the.handle_main()
-        print mod
+        #print mod
 
         outp = Ast_Py.OutP()
         the2 = Ast_Py.PY_output(outp)
         mod.walkabout(the2)
         txt = outp.txt
+        print txt
         lines = txt.splitlines()
         self.assertEqual(lines[-1].strip(), "print 'good'")
         #print '<%s>' % lines[-1]
@@ -248,7 +250,7 @@ itemq = value1 '?'
         s = Gen_All(syntax_Py, True)
         #open('Ast_Py2.py', 'w').write(s)
         s2 = open('Ast_Py.py').read()
-        #self.assertEqual(s, s2)
+        self.assertEqual(s, s2)
         #return
 
         import Ast_Py
@@ -257,7 +259,7 @@ itemq = value1 '?'
         mod = the.handle_main()
         last = the.SerialOut()
 
-        stand = [[[[['LiuD_Main_Gen'], [[[['Gen_All'], []]], 1]], 0], 6], [['cls1', [], [[[[[['v3', 0], 2], [[[[[[[[[[[[[[[[['a1', 8], 7], 0], 'a2'], 3], [[[[[[[[['3', 0], 7], 0], 1]]]]], 2]], 1], 'a3'], 3], [[[], [[[[[[[['a4', 8], 7], 0], 1]]]]]], [[], [[[[[[[['a5', 8], 7], 0], 1]]]]]]]], 2], 1]]]]], 1]], 2], 9]]], 7], [['cls2', [[['cls1'], ['object']]], [[[[[['v', 0], 2], [[[[[[[[[[['3', 0], 7], 0], 1]], '+', [[[['2', 0], 7], 0]]]]], [[[[[0, 6], 0], 1]]], [[[[0, [[['66', 0], 7], 0]], 0]]]]], 1]], 2], 9]]], 7], [[[[['s', 0], 2], [[[[[[[[['"""test\ntest\n    multiline\n        string"""', 1], 7], 0], 1]]]]], 1]], 2], 9], [['main', [], [[[[[['c', 0], 2], [[[[[[[[['2800', 0], 7], 0], 1]]]]], 1]], 2], 9], [[[[['f', 0], 2], [[[[[[[[[[[[[[[[[[[['10000', 0], 7], 0], 1]], '/', [[[['5', 0], 7], 0]]]]]]], 0], 0], 0], 1]], '*', [[[['2801', 0], 7], 0]]]]]], 1]], 2], 9], [[[[[[['f', 0], [[[[[[[[['c', 8], 7], 0], 1]]]]], 2]], 1], 2], [[[[[[[[['0', 0], 7], 0], 1]]]]], 1]], 2], 9], [[[[['e', 0], 2], [[[[[[[[['0', 0], 7], 0], 1]]]]], 1]], 2], 9], [[[[[[[[[[['c', 8], 7], 0], 1]]], '!=', [[[[[['0', 0], 7], 0], 1]]]]]], [[[[[['d', 0], 2], [[[[[[[[['0', 0], 7], 0], 1]]]]], 1]], 2], 9], [[[[['b', 0], 2], [[[[[[[[['c', 8], 7], 0], 1]]]]], 1]], 2], 9], [[[[[[[[[0, 6], 0], 1]]]]], [[[[[['d', 0], 2], 0, [[[[[[[[[[['f', 8], 7], 0], [[[[[[[[['b', 8], 7], 0], 1]]]]], 2]], 1], 1]], '*', [[[['10000', 0], 7], 0]]]]]]], 3], 9], [[[[[[['f', 0], [[[[[[[[['b', 8], 7], 0], 1]]]]], 2]], 1], 2], [[[[[[[[[['d', 8], 7], 0], 1]]], '%', [[[[[[[[[[[[[[['b', 8], 7], 0], 1]], '*', [[[['2', 0], 7], 0]]], '-', [[[['1', 0], 7], 0]]]]]], 4], 0], 1]]]]]], 1]], 2], 9], [[[[['d', 0], 2], 2, [[[[[[[[[[[[[[[[['b', 8], 7], 0], 1]], '*', [[[['2', 0], 7], 0]]], '-', [[[['1', 0], 7], 0]]]]]], 4], 0], 1]]]]]], 3], 9], [[[[['b', 0], 2], 1, [[[[[[[['1', 0], 7], 0], 1]]]]]], 3], 9], [[[[[[[[[[['b', 8], 7], 0], 1]]], '==', [[[[[['0', 0], 7], 0], 1]]]]]], [[[1, 0], 9]], [], []], 0], [[[[['d', 0], 2], 3, [[[[[[[['b', 8], 7], 0], 1]]]]]], 3], 9]], []], 1], [[[[['c', 0], 2], 1, [[[[[[[['14', 0], 7], 0], 1]]]]]], 3], 9], [[[[[[[[[[[["'%04d'", 7], 7], 0], 1]]], '%', [[[[[[[[[[[[[['e', 8], 7], 0], 1]], '+', [[[[['d', 8], 7], 0]], '/', [[[['10000', 0], 7], 0]]]]]]], 4], 0], 1]]]]]]], 1], 4], [[[[['e', 0], 2], [[[[[[[[[['d', 8], 7], 0], 1]]], '%', [[[[[['10000', 0], 7], 0], 1]]]]]], 1]], 2], 9]], []], 1], [[[], 0], 4]]], 5], [[[[[[[[[['main', []], 5], 0], 1]]]]], 4], 9]]
+        stand = [[[[['LiuD_Main_Gen'], [[[['Gen_All'], []]], 1]], 0], 6], [['cls1', [], [[[[[['v3', 0], 2], [[[[[[[[[[[[[[[[[['a1', 1], 1], 7], 0], 'a2'], 3], [[[[[[[[[['3', 0], 1], 7], 0], 1]]]]], 2]], 1], 'a3'], 3], [[[], [[[[[[[[['a4', 1], 1], 7], 0], 1]]]]]], [[], [[[[[[[[['a5', 1], 1], 7], 0], 1]]]]]]]], 2], 1]]]]], 1]], 2], 9]]], 7], [['cls2', [[['cls1'], ['object']]], [[[[[['v', 0], 2], [[[[[[[[[[[['3', 0], 1], 7], 0], 1]], '+', [[[[['2', 0], 1], 7], 0]]]]], [[[[[0, 6], 0], 1]]], [[[[0, [[[['66', 0], 1], 7], 0]], 0]]]]], 1]], 2], 9]]], 7], [[[[['s', 0], 2], [[[[[[[[[['"""test\ntest\n    multiline\n        string"""', 0], 0], 7], 0], 1]]]]], 1]], 2], 9], [['main', [], [[[[[['c', 0], 2], [[[[[[[[[['2800', 0], 1], 7], 0], 1]]]]], 1]], 2], 9], [[[[['f', 0], 2], [[[[[[[[[[[[[[[[[[[[['10000', 0], 1], 7], 0], 1]], '/', [[[[['5', 0], 1], 7], 0]]]]]]], 0], 0], 0], 1]], '*', [[[[['2801', 0], 1], 7], 0]]]]]], 1]], 2], 9], [[[[[[['f', 0], [[[[[[[[[['c', 1], 1], 7], 0], 1]]]]], 2]], 1], 2], [[[[[[[[[['0', 0], 1], 7], 0], 1]]]]], 1]], 2], 9], [[[[['e', 0], 2], [[[[[[[[[['0', 0], 1], 7], 0], 1]]]]], 1]], 2], 9], [[[[[[[[[[[['c', 1], 1], 7], 0], 1]]], '!=', [[[[[[['0', 0], 1], 7], 0], 1]]]]]], [[[[[['d', 0], 2], [[[[[[[[[['0', 0], 1], 7], 0], 1]]]]], 1]], 2], 9], [[[[['b', 0], 2], [[[[[[[[[['c', 1], 1], 7], 0], 1]]]]], 1]], 2], 9], [[[[[[[[[0, 6], 0], 1]]]]], [[[[[['d', 0], 2], 0, [[[[[[[[[[[['f', 1], 1], 7], 0], [[[[[[[[[['b', 1], 1], 7], 0], 1]]]]], 2]], 1], 1]], '*', [[[[['10000', 0], 1], 7], 0]]]]]]], 3], 9], [[[[[[['f', 0], [[[[[[[[[['b', 1], 1], 7], 0], 1]]]]], 2]], 1], 2], [[[[[[[[[[['d', 1], 1], 7], 0], 1]]], '%', [[[[[[[[[[[[[[[['b', 1], 1], 7], 0], 1]], '*', [[[[['2', 0], 1], 7], 0]]], '-', [[[[['1', 0], 1], 7], 0]]]]]], 4], 0], 1]]]]]], 1]], 2], 9], [[[[['d', 0], 2], 2, [[[[[[[[[[[[[[[[[['b', 1], 1], 7], 0], 1]], '*', [[[[['2', 0], 1], 7], 0]]], '-', [[[[['1', 0], 1], 7], 0]]]]]], 4], 0], 1]]]]]], 3], 9], [[[[['b', 0], 2], 1, [[[[[[[[['1', 0], 1], 7], 0], 1]]]]]], 3], 9], [[[[[[[[[[[['b', 1], 1], 7], 0], 1]]], '==', [[[[[[['0', 0], 1], 7], 0], 1]]]]]], [[[1, 0], 9]], [], []], 0], [[[[['d', 0], 2], 3, [[[[[[[[['b', 1], 1], 7], 0], 1]]]]]], 3], 9]], []], 1], [[[[['c', 0], 2], 1, [[[[[[[[['14', 0], 1], 7], 0], 1]]]]]], 3], 9], [[[[[[[[[[[[["'%04d'", 6], 0], 7], 0], 1]]], '%', [[[[[[[[[[[[[[['e', 1], 1], 7], 0], 1]], '+', [[[[[['d', 1], 1], 7], 0]], '/', [[[[['10000', 0], 1], 7], 0]]]]]]], 4], 0], 1]]]]]]], 1], 4], [[[[['e', 0], 2], [[[[[[[[[[['d', 1], 1], 7], 0], 1]]], '%', [[[[[[['10000', 0], 1], 7], 0], 1]]]]]], 1]], 2], 9]], []], 1], [[[], 0], 4]]], 5], [[[[[[[[[['main', []], 5], 0], 1]]]]], 4], 9]]
         if last != stand:
             print last
         self.assertEqual(last, stand)
@@ -269,9 +271,8 @@ itemq = value1 '?'
         the2 = Ast_Py.PY_output(outp)
         mod.walkabout(the2)
         txt = outp.txt
-        print '<%s>' % txt
-        txt2 = '''
-from LiuD_Main_Gen import Gen_All
+        #print '<%s>' % txt
+        txt2 = '''from LiuD_Main_Gen import Gen_All
 class cls1 :
      v3 = a1 . a2 [ 3 ] . a3 ( a4 , a5 )
 class cls2 ( cls1 , object ) :
@@ -302,18 +303,18 @@ def main ( ) :
      print
 main ( )'''
         self.assertEqual(txt, txt2)
-
-        outp = Ast_Py.OutP()
-        the2 = Ast_Py.PY_output(outp)
-        mod2.walkabout(the2)
-        txt = outp.txt
-        self.assertEqual(txt, txt2)
+        if True:
+            outp = Ast_Py.OutP()
+            the2 = Ast_Py.PY_output(outp)
+            mod2.walkabout(the2)
+            txt = outp.txt
+            print '<%s>' % txt
+            self.assertEqual(txt, txt2)
     def test6(self):
         sample_Python = open('LiuD_Main_Gen.py').read()
         import Ast_Py
         the = Ast_Py.PY_Parser(sample_Python)
         mod = the.handle_main()
-        print mod
 
         outp = Ast_Py.OutP()
         the2 = Ast_Py.PY_output(outp)
@@ -332,7 +333,7 @@ main ( )'''
         txt = outp.txt
         self.assertEqual(txt.splitlines()[-1].strip(), "print '  ' * len ( self . lst ) + s + '<-'")
 
-    def test7(self):
+    def test8(self):
         sample_Python = open('Ast_LiuD.py').read()
         import Ast_Py
         the = Ast_Py.PY_Parser(sample_Python)
@@ -344,7 +345,7 @@ main ( )'''
         txt = outp.txt
         self.assertEqual(txt.splitlines()[-1].strip(), "self . outp . puts ( '?' )")
 
-    def test8(self):
+    def test9(self):
         sample_Python = open('Ast_Py.py').read()
         import Ast_Py
         the = Ast_Py.PY_Parser(sample_Python)
@@ -354,7 +355,10 @@ main ( )'''
         the2 = Ast_Py.PY_output(outp)
         mod.walkabout(the2)
         txt = outp.txt
-        self.assertEqual(txt.splitlines()[-1].strip(), "return PY_litname ( s )")
+        #print txt
+        self.assertEqual(txt.splitlines()[-1].strip(), "return PY_litname ( n )")
 
 if __name__ == '__main__':
+    #the = Test(methodName='test5')
+    #the.test5()
     print 'good'

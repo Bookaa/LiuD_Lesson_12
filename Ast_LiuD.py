@@ -40,14 +40,14 @@
 from GDL_common import *
 
 class LiuD_values_or:
-    def __init__(self, slst):
-        self.slst = slst
+    def __init__(self, nlst):
+        self.nlst = nlst
     def walkabout(self, visitor):
         return visitor.visit_values_or(self)
 
 class LiuD_string_or:
     def __init__(self, slst):
-        self.slst = slst
+        self.slst, self.slst_raw = splitraw(slst)
     def walkabout(self, visitor):
         return visitor.visit_string_or(self)
 
@@ -58,60 +58,60 @@ class LiuD_main:
         return visitor.visit_main(self)
 
 class LiuD_ends:
-    def __init__(self, s, v):
-        self.s = s
+    def __init__(self, n, v):
+        self.n = n
         self.v = v
     def walkabout(self, visitor):
         return visitor.visit_ends(self)
 
 class LiuD_inline:
-    def __init__(self, s, v):
-        self.s = s
+    def __init__(self, n, v):
+        self.n = n
         self.v = v
     def walkabout(self, visitor):
         return visitor.visit_inline(self)
 
 class LiuD_option1:
-    def __init__(self, s):
-        self.s = s
+    def __init__(self, n):
+        self.n = n
     def walkabout(self, visitor):
         return visitor.visit_option1(self)
 
 class LiuD_state1:
-    def __init__(self, s):
-        self.s = s
+    def __init__(self, n):
+        self.n = n
     def walkabout(self, visitor):
         return visitor.visit_state1(self)
 
 class LiuD_state2:
     def __init__(self, s):
-        self.s = s
+        self.s = s[1]; self.s_raw = s[0]
     def walkabout(self, visitor):
         return visitor.visit_state2(self)
 
 class LiuD_basic1:
-    def __init__(self, s, v):
-        self.s = s
+    def __init__(self, n, v):
+        self.n = n
         self.v = v
     def walkabout(self, visitor):
         return visitor.visit_basic1(self)
 
 class LiuD_strcat:
     def __init__(self, slst):
-        self.slst = slst
+        self.slst, self.slst_raw = splitraw(slst)
     def walkabout(self, visitor):
         return visitor.visit_strcat(self)
 
 class LiuD_stmt:
-    def __init__(self, s, v):
-        self.s = s
+    def __init__(self, n, v):
+        self.n = n
         self.v = v
     def walkabout(self, visitor):
         return visitor.visit_stmt(self)
 
 class LiuD_headseries:
-    def __init__(self, s, vlst):
-        self.s = s
+    def __init__(self, n, vlst):
+        self.n = n
         self.vlst = vlst
     def walkabout(self, visitor):
         return visitor.visit_headseries(self)
@@ -123,49 +123,49 @@ class LiuD_series:
         return visitor.visit_series(self)
 
 class LiuD_jiap:
-    def __init__(self, s1, s2):
-        self.s1 = s1
-        self.s2 = s2
+    def __init__(self, n, s):
+        self.n = n
+        self.s = s[1]; self.s_raw = s[0]
     def walkabout(self, visitor):
         return visitor.visit_jiap(self)
 
 class LiuD_jiad:
-    def __init__(self, s1, s2):
-        self.s1 = s1
-        self.s2 = s2
+    def __init__(self, n, s):
+        self.n = n
+        self.s = s[1]; self.s_raw = s[0]
     def walkabout(self, visitor):
         return visitor.visit_jiad(self)
 
 class LiuD_endswith:
-    def __init__(self, s, slst):
-        self.s = s
-        self.slst = slst
+    def __init__(self, n, nlst):
+        self.n = n
+        self.nlst = nlst
     def walkabout(self, visitor):
         return visitor.visit_endswith(self)
 
 class LiuD_multiop:
-    def __init__(self, s1, vlst, s2):
-        self.s1 = s1
+    def __init__(self, n1, vlst, n2):
+        self.n1 = n1
         self.vlst = vlst
-        self.s2 = s2
+        self.n2 = n2
     def walkabout(self, visitor):
         return visitor.visit_multiop(self)
 
 class LiuD_enclosedstrs:
     def __init__(self, slst):
-        self.slst = slst
+        self.slst, self.slst_raw = splitraw(slst)
     def walkabout(self, visitor):
         return visitor.visit_enclosedstrs(self)
 
 class LiuD_litname:
-    def __init__(self, s):
-        self.s = s
+    def __init__(self, n):
+        self.n = n
     def walkabout(self, visitor):
         return visitor.visit_litname(self)
 
 class LiuD_litstring:
     def __init__(self, s):
-        self.s = s
+        self.s = s[1]; self.s_raw = s[0]
     def walkabout(self, visitor):
         return visitor.visit_litstring(self)
 
@@ -194,7 +194,7 @@ class LiuD_Parser(Parser00):
         s = self.handle_NAME()
         if not s:
             return None
-        slst = [s]
+        nlst = [s]
         while True:
             self.skipspacecrlf()
             if not self.handle_str('|'):
@@ -203,12 +203,12 @@ class LiuD_Parser(Parser00):
             s = self.handle_NAME()
             if not s:
                 break
-            slst.append(s)
+            nlst.append(s)
             savpos = self.pos
         self.restorepos(savpos)
-        if len(slst) < 2:
+        if len(nlst) < 2:
             return None
-        return LiuD_values_or(slst)
+        return LiuD_values_or(nlst)
         
     def handle_string_or(self):
         savpos = self.pos
@@ -263,8 +263,8 @@ class LiuD_Parser(Parser00):
         
     def handle_ends(self):
         savpos = self.pos
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return None
         self.skipspace()
         if not self.handle_str('->'):
@@ -273,12 +273,12 @@ class LiuD_Parser(Parser00):
         v = self.hdl_stmt_value()
         if not v:
             return self.restorepos(savpos)
-        return LiuD_ends(s, v)
+        return LiuD_ends(n, v)
         
     def handle_inline(self):
         savpos = self.pos
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return None
         self.skipspace()
         if not self.handle_str(':='):
@@ -287,7 +287,7 @@ class LiuD_Parser(Parser00):
         v = self.hdl_stmt_value()
         if not v:
             return self.restorepos(savpos)
-        return LiuD_inline(s, v)
+        return LiuD_inline(n, v)
         
     def hdl_options(self):
         v = self.handle_option1()
@@ -309,10 +309,10 @@ class LiuD_Parser(Parser00):
         if not self.handle_str('='):
             return self.restorepos(savpos)
         self.skipspace()
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return self.restorepos(savpos)
-        return LiuD_option1(s)
+        return LiuD_option1(n)
         
     def handle_state1(self):
         savpos = self.pos
@@ -322,10 +322,10 @@ class LiuD_Parser(Parser00):
         if not self.handle_str('='):
             return self.restorepos(savpos)
         self.skipspace()
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return self.restorepos(savpos)
-        return LiuD_state1(s)
+        return LiuD_state1(n)
         
     def handle_state2(self):
         savpos = self.pos
@@ -345,8 +345,8 @@ class LiuD_Parser(Parser00):
         if not self.handle_str('basic.'):
             return None
         self.skipspace()
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return self.restorepos(savpos)
         self.skipspace()
         if not self.handle_str('='):
@@ -355,7 +355,7 @@ class LiuD_Parser(Parser00):
         v = self.handle_strcat()
         if not v:
             return self.restorepos(savpos)
-        return LiuD_basic1(s, v)
+        return LiuD_basic1(n, v)
         
     def handle_strcat(self):
         s = self.handle_STRING()
@@ -378,8 +378,8 @@ class LiuD_Parser(Parser00):
         
     def handle_stmt(self):
         savpos = self.pos
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return None
         self.skipspace()
         if not self.handle_str('='):
@@ -388,7 +388,7 @@ class LiuD_Parser(Parser00):
         v = self.hdl_stmt_value()
         if not v:
             return self.restorepos(savpos)
-        return LiuD_stmt(s, v)
+        return LiuD_stmt(n, v)
         
     def hdl_stmt_value(self):
         v = self.handle_multiop()
@@ -412,8 +412,8 @@ class LiuD_Parser(Parser00):
         
     def handle_headseries(self):
         savpos = self.pos
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return None
         self.skipspace()
         if not self.handle_str(','):
@@ -429,7 +429,7 @@ class LiuD_Parser(Parser00):
             savpos2 = self.pos
             self.skipspace()
         self.restorepos(savpos2)
-        return LiuD_headseries(s, vlst)
+        return LiuD_headseries(n, vlst)
         
     def handle_series(self):
         v = self.hdl_value()
@@ -449,60 +449,60 @@ class LiuD_Parser(Parser00):
         
     def handle_jiap(self):
         savpos = self.pos
-        s1 = self.handle_NAME()
-        if not s1:
+        n = self.handle_NAME()
+        if not n:
             return None
         self.skipspace()
         if not self.handle_str('^+'):
             return self.restorepos(savpos)
         self.skipspace()
-        s2 = self.handle_STRING()
-        if not s2:
+        s = self.handle_STRING()
+        if not s:
             return self.restorepos(savpos)
-        return LiuD_jiap(s1, s2)
+        return LiuD_jiap(n, s)
         
     def handle_jiad(self):
         savpos = self.pos
-        s1 = self.handle_NAME()
-        if not s1:
+        n = self.handle_NAME()
+        if not n:
             return None
         self.skipspace()
         if not self.handle_str('^*'):
             return self.restorepos(savpos)
         self.skipspace()
-        s2 = self.handle_STRING()
-        if not s2:
+        s = self.handle_STRING()
+        if not s:
             return self.restorepos(savpos)
-        return LiuD_jiad(s1, s2)
+        return LiuD_jiad(n, s)
         
     def handle_endswith(self):
         savpos = self.pos
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return None
         self.skipspace()
         if not self.handle_str('(,'):
             return self.restorepos(savpos)
         self.skipspace()
-        slst = []
+        nlst = []
         savpos2 = self.pos
         while True:
             s_ = self.handle_NAME()
             if not s_:
                 break
-            slst.append(s_)
+            nlst.append(s_)
             savpos2 = self.pos
             self.skipspace()
         self.restorepos(savpos2)
         self.skipspace()
         if not self.handle_str(')'):
             return self.restorepos(savpos)
-        return LiuD_endswith(s, slst)
+        return LiuD_endswith(n, nlst)
         
     def handle_multiop(self):
         savpos = self.pos
-        s1 = self.handle_NAME()
-        if not s1:
+        n1 = self.handle_NAME()
+        if not n1:
             return None
         self.skipspace()
         if not self.handle_str('(,'):
@@ -522,10 +522,10 @@ class LiuD_Parser(Parser00):
         if not self.handle_str(')'):
             return self.restorepos(savpos)
         self.skipspace()
-        s2 = self.handle_NAME()
-        if not s2:
+        n2 = self.handle_NAME()
+        if not n2:
             return self.restorepos(savpos)
-        return LiuD_multiop(s1, vlst, s2)
+        return LiuD_multiop(n1, vlst, n2)
         
     def hdl_opstr(self):
         v = self.handle_litstring()
@@ -556,10 +556,10 @@ class LiuD_Parser(Parser00):
         return LiuD_enclosedstrs(slst)
         
     def handle_litname(self):
-        s = self.handle_NAME()
-        if not s:
+        n = self.handle_NAME()
+        if not n:
             return None
-        return LiuD_litname(s)
+        return LiuD_litname(n)
         
     def handle_litstring(self):
         s = self.handle_STRING()
@@ -624,8 +624,8 @@ class LiuD_output:
     def __init__(self, outp):
         self.outp = outp
     def visit_values_or(self, node):
-        self.outp.puts(node.slst[0])
-        for s_ in node.slst[1:]:
+        self.outp.puts(node.nlst[0])
+        for s_ in node.nlst[1:]:
             self.outp.puts('|')
             self.outp.puts(s_)
     def visit_string_or(self, node):
@@ -640,11 +640,11 @@ class LiuD_output:
     def visit_stmt1(self, node):
         node.v.walkabout(self)
     def visit_ends(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts('->')
         node.v.walkabout(self)
     def visit_inline(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts(':=')
         node.v.walkabout(self)
     def visit_options(self, node):
@@ -652,18 +652,18 @@ class LiuD_output:
     def visit_option1(self, node):
         self.outp.puts('option.prefix')
         self.outp.puts('=')
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
     def visit_state1(self, node):
         self.outp.puts('states.skip')
         self.outp.puts('=')
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
     def visit_state2(self, node):
         self.outp.puts('states.linecomments')
         self.outp.puts('=')
-        self.outp.puts(node.s)
+        self.outp.puts(node.s_raw)
     def visit_basic1(self, node):
         self.outp.puts('basic.')
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts('=')
         node.v.walkabout(self)
     def visit_strcat(self, node):
@@ -672,13 +672,13 @@ class LiuD_output:
             self.outp.puts('+')
             self.outp.puts(s_)
     def visit_stmt(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts('=')
         node.v.walkabout(self)
     def visit_stmt_value(self, node):
         node.v.walkabout(self)
     def visit_headseries(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts(',')
         for v in node.vlst:
             v.walkabout(self)
@@ -686,26 +686,26 @@ class LiuD_output:
         for v in node.vlst:
             v.walkabout(self)
     def visit_jiap(self, node):
-        self.outp.puts(node.s1)
+        self.outp.puts(node.n)
         self.outp.puts('^+')
-        self.outp.puts(node.s2)
+        self.outp.puts(node.s_raw)
     def visit_jiad(self, node):
-        self.outp.puts(node.s1)
+        self.outp.puts(node.n)
         self.outp.puts('^*')
-        self.outp.puts(node.s2)
+        self.outp.puts(node.s_raw)
     def visit_endswith(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
         self.outp.puts('(,')
-        for v in node.slst:
+        for v in node.nlst:
             self.outp.puts(v)
         self.outp.puts(')')
     def visit_multiop(self, node):
-        self.outp.puts(node.s1)
+        self.outp.puts(node.n1)
         self.outp.puts('(,')
         for v in node.vlst:
             v.walkabout(self)
         self.outp.puts(')')
-        self.outp.puts(node.s2)
+        self.outp.puts(node.n2)
     def visit_opstr(self, node):
         node.v.walkabout(self)
     def visit_enclosedstrs(self, node):
@@ -714,9 +714,9 @@ class LiuD_output:
             self.outp.puts(v)
         self.outp.puts(')')
     def visit_litname(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.n)
     def visit_litstring(self, node):
-        self.outp.puts(node.s)
+        self.outp.puts(node.s_raw)
     def visit_value1(self, node):
         node.v.walkabout(self)
     def visit_enclosed(self, node):
